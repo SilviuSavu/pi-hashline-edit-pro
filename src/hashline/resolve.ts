@@ -74,15 +74,16 @@ function assertAligned(
 	}
 }
 
-export function fmtMismatch(
+export function fmtMismatchWithHashes(
   mismatches: HMismatch[],
   fileLines: string[],
   fileHashes: string[],
   filePath?: string,
-): string {
+): { text: string; hashes: string[] } {
   assertAligned(fileLines, fileHashes, "fmtMismatch");
 
   const out: string[] = [];
+  const hashes: string[] = [];
   const notFound = mismatches.filter((m) => m.kind === "not_found");
   const ambiguous = mismatches.filter((m) => m.kind === "ambiguous");
 
@@ -98,6 +99,7 @@ export function fmtMismatch(
       const to = Math.min(fileLines.length, ctx.line + 1);
       const rows: string[] = [];
       for (let ln = from; ln <= to; ln++) {
+        hashes.push(fileHashes[ln - 1]!);
         rows.push(`    ${ln}: ${fileHashes[ln - 1]}│${clipLine(fileLines[ln - 1] ?? "")}`);
       }
       out.push("");
@@ -115,6 +117,7 @@ export function fmtMismatch(
         (m.candidates?.length ?? 0) > sample.length
           ? `, ... (+${(m.candidates?.length ?? 0) - sample.length} more)`
           : "";
+      for (const line of sample) hashes.push(fileHashes[line - 1]!);
       const lines = sample
         .map((line) => {
           const content = clipLine(fileLines[line - 1] ?? "");
@@ -127,7 +130,16 @@ export function fmtMismatch(
     }
   }
 
-  return out.join("\n");
+  return { text: out.join("\n"), hashes };
+}
+
+export function fmtMismatch(
+  mismatches: HMismatch[],
+  fileLines: string[],
+  fileHashes: string[],
+  filePath?: string,
+): string {
+  return fmtMismatchWithHashes(mismatches, fileLines, fileHashes, filePath).text;
 }
 
 const ITEM_KS = new Set(["replacement_text", "remove_from", "remove_to"]);
@@ -484,6 +496,15 @@ export class RangeStaleError extends Error {
     this.name = "RangeStaleError";
     this.firstMismatchLine = firstMismatchLine;
     this.rangeHashes = rangeHashes;
+  }
+}
+
+export class AnchorMismatchError extends Error {
+  readonly feedbackHashes: string[];
+  constructor(message: string, feedbackHashes: string[]) {
+    super(message);
+    this.name = "AnchorMismatchError";
+    this.feedbackHashes = feedbackHashes;
   }
 }
 

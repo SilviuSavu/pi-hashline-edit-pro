@@ -21,6 +21,7 @@ import { applyEdit,
   parseHashRef,
   MAX_HASH_LINES,
   RangeStaleError,
+  AnchorMismatchError,
   type HEdit,
   type NEdit,
 } from "./hashline";
@@ -246,11 +247,19 @@ export async function execPipeline(
       served,
     );
   } catch (error) {
-    if (error instanceof RangeStaleError && options?.noPersist !== true) {
-      try {
-        recordServed(hashStore, absolutePath, error.rangeHashes);
-      } catch (recordError) {
-        console.error("Failed to record served state from range-stale feedback:", recordError);
+    if (options?.noPersist !== true) {
+      if (error instanceof RangeStaleError) {
+        try {
+          recordServed(hashStore, absolutePath, error.rangeHashes);
+        } catch (recordError) {
+          console.error("Failed to record served state from range-stale feedback:", recordError);
+        }
+      } else if (error instanceof AnchorMismatchError) {
+        try {
+          recordServed(hashStore, absolutePath, error.feedbackHashes);
+        } catch (recordError) {
+          console.error("Failed to record served state from anchor-mismatch feedback:", recordError);
+        }
       }
     }
     throw error;

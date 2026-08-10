@@ -3,6 +3,7 @@ import {
 	applyEdit,
 	lineHashes,
 	parseText,
+	AnchorMismatchError,
 } from "../../src/hashline";
 import { splitLines } from "../../src/utils";
 import { useTestHome } from "../support/fixtures";
@@ -118,6 +119,27 @@ describe("perfect hashing", () => {
 		expect(caught!.message).toMatch(/matches lines 1, 3/);
 		expect(caught!.message).toContain(`${realHashes[0]!}│alpha`);
 		expect(caught!.message).toContain(`${realHashes[0]!}│gamma`);
+	});
+
+	it("carries the candidate hashes of ambiguous feedback for serving", async () => {
+		const file = "alpha\nbeta\ngamma\ndelta";
+		const realHashes = await lineHashes(file, home.testPath);
+		const forgedHashes = [...realHashes];
+		forgedHashes[2] = realHashes[0]!;
+
+		let caught: unknown;
+		try {
+			applyEdit(
+				file,
+				{ hash_bounds: [{ hash: realHashes[0]! }, { hash: realHashes[0]! }], content_lines: ["X"] },
+				undefined,
+				forgedHashes,
+			);
+		} catch (error) {
+			caught = error;
+		}
+		expect(caught).toBeInstanceOf(AnchorMismatchError);
+		expect((caught as AnchorMismatchError).feedbackHashes).toContain(realHashes[0]!);
 	});
 
 	it("all hashes are unique for any file shape", async () => {

@@ -89,6 +89,51 @@ describe("served-state range verification", () => {
     });
   });
 
+  it("serves the context rows in E_STALE_ANCHOR feedback so a copied context hash edits immediately", async () => {
+    await withTempFile("sample.ts", "a\nb\nc\nd\n", async ({ cwd, path }) => {
+      const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
+
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const lines = getText(readResult).split("\n");
+      const aHash = extractHash(lines.find((l: string) => l.includes("│a"))!);
+      const dHash = extractHash(lines.find((l: string) => l.includes("│d"))!);
+
+      await writeFile(path, "A\nb\nC\nd\n", "utf-8");
+
+      let staleError = "";
+      try {
+        await editTool.execute(
+          "e1",
+          { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_text: "x" },
+          undefined,
+          undefined,
+          ctx,
+        );
+      } catch (error) {
+        staleError = (error as Error).message;
+      }
+      expect(staleError).toMatch(/E_STALE_ANCHOR/);
+      expect(staleError).toContain("Current context around resolved anchor");
+
+      const contextRow = staleError.split("\n").find((l: string) => /^  +[0-9]+: [A-Za-z0-9]{3}│C$/.test(l));
+      expect(contextRow).toBeDefined();
+      const contextHash = contextRow!.match(/([A-Za-z0-9]{3})│/)![1]!;
+
+      const served = await servedFor(cwd, "sample.ts");
+      expect(served!.has(contextHash)).toBe(true);
+
+      const retry = await editTool.execute(
+        "e2",
+        { path: "sample.ts", remove_from: contextHash, remove_to: contextHash, replacement_text: "c" },
+        undefined,
+        undefined,
+        ctx,
+      );
+      expect(retry.content[0].text).toContain("Successfully replaced");
+      expect(await readFile(path, "utf-8")).toBe("A\nb\nc\nd\n");
+    });
+  });
+
   it("tolerates an out-of-range external modification", async () => {
     await withTempFile("sample.ts", "a\nb\nc\nd\n", async ({ cwd, path }) => {
       const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
