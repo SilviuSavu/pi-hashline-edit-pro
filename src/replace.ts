@@ -20,6 +20,7 @@ import { applyEdit,
   resEdit,
   parseHashRef,
   MAX_HASH_LINES,
+  RangeStaleError,
   type HEdit,
   type NEdit,
 } from "./hashline";
@@ -45,6 +46,7 @@ import {
 import { loadP, loadGuide } from "./prompts";
 import { saveUndo } from "./replace-undo";
 import { loadHashStore, findSnapshotPaths, type HashStore } from "./hash-store";
+import { getServed, recordServed, recordServedDiff } from "./served";
 
 const replacementTextSchema = Type.String({
   description:
@@ -232,13 +234,27 @@ export async function execPipeline(
     path, cwd, { signal: options?.signal, accessMode: options?.accessMode, maxLines: MAX_HASH_LINES, store: hashStore, noPersist: options?.noPersist },
   );
 
-  const anchorResult = applyEdit(
-    originalNormalized,
-    edit,
-    options?.signal,
-    originalHashes,
-    path,
-  );
+  const served = await getServed(hashStore, absolutePath);
+  let anchorResult: ReturnType<typeof applyEdit>;
+  try {
+    anchorResult = applyEdit(
+      originalNormalized,
+      edit,
+      options?.signal,
+      originalHashes,
+      path,
+      served,
+    );
+  } catch (error) {
+    if (error instanceof RangeStaleError && options?.noPersist !== true) {
+      try {
+        recordServed(hashStore, absolutePath, error.rangeHashes);
+      } catch (recordError) {
+        console.error("Failed to record served state from range-stale feedback:", recordError);
+      }
+    }
+    throw error;
+  }
 
   const result = anchorResult.content;
   const isNoop = result === originalNormalized;
@@ -562,7 +578,16 @@ export function buildToolDef(): ToolDef {
           snapshotId: updatedSnapshotId,
           editMeta,
         };
-        return buildChanged(successInput);
+        const changed = buildChanged(successInput);
+        if (changed.details.diff) {
+          try {
+            const store = await loadHashStore();
+            recordServedDiff(store, mutationTargetPath, changed.details.diff);
+          } catch (error) {
+            console.error("Failed to record served state from post-edit diff:", error);
+          }
+        }
+        return changed;
       });
     },
   };

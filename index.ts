@@ -13,6 +13,7 @@ import {
   toggleAutoRead,
 } from "./src/config";
 import { loadHashStore, pruneMissing } from "./src/hash-store";
+import { recordServed, clearServed } from "./src/served";
 import { readNormFile } from "./src/file-reader";
 import { loadFileKindAndText } from "./src/file-kind";
 import { toCwd } from "./src/paths";
@@ -61,7 +62,10 @@ export default function (pi: ExtensionAPI): void {
       const writtenPath = (event.input as Record<string, unknown>)?.path;
       if (typeof writtenPath === "string") {
         try {
-          await clearUndo(await resolveTarget(toCwd(writtenPath, ctx.cwd)));
+          const target = await resolveTarget(toCwd(writtenPath, ctx.cwd));
+          await clearUndo(target);
+          const store = await loadHashStore();
+          clearServed(store, target);
         } catch (error) {
           console.error("Failed to clear undo after write:", error);
         }
@@ -84,6 +88,12 @@ export default function (pi: ExtensionAPI): void {
           DEFAULT_MAX_BYTES,
           AUTO_READ_MAX,
         );
+        try {
+          const store = await loadHashStore();
+          recordServed(store, absolutePath, preview.servedHashes);
+        } catch (error) {
+          console.error("Failed to record served state from auto-read:", error);
+        }
         return {
           content: [
             ...(event.content ?? []),

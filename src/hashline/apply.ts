@@ -7,6 +7,7 @@ import {
 	swapReversedRanges,
 	warnUnicodeEsc,
 	fmtMismatch,
+	assertRangeServed,
 	type RHEdit,
 	type NEdit,
 	type HEdit,
@@ -144,6 +145,7 @@ export function applyEdit(
 	signal?: AbortSignal,
 	precomputedHashes?: string[],
 	filePath?: string,
+	servedHashes?: ReadonlySet<string>,
 	): {
 	content: string;
 	firstChangedLine: number | undefined;
@@ -216,6 +218,11 @@ export function applyEdit(
 			);
 		}
 		resolved = correctedResult.resolved;
+	}
+
+	if (servedHashes) {
+		abortIf(signal);
+		assertRangeServed(resolved, lineIndex.fileLines, fileHashes, servedHashes, filePath);
 	}
 
 	const spanResult = resToSpan(resolved, content, lineIndex);

@@ -17,6 +17,9 @@ interface Prepared {
   undoUpsert: (...params: SqlParams) => void;
   undoGet: (...params: SqlParams) => Record<string, unknown> | undefined;
   undoDelete: (...params: SqlParams) => void;
+  servedGet: (...params: SqlParams) => Record<string, unknown> | undefined;
+  servedUpsert: (...params: SqlParams) => void;
+  servedDelete: (...params: SqlParams) => void;
 }
 
 export interface HashStore {
@@ -37,7 +40,7 @@ interface LegacySnapshot {
   hashes: string[];
 }
 
-function isValidHashList(value: unknown): value is string[] {
+export function isValidHashList(value: unknown): value is string[] {
   if (!Array.isArray(value)) return false;
   for (const hash of value) {
     if (typeof hash !== "string" || !HASH_RE.test(hash)) return false;
@@ -149,6 +152,13 @@ function buildStore(
       "updated_at INTEGER NOT NULL" +
     ")"
   );
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS served (" +
+      "path TEXT PRIMARY KEY, " +
+      "hashes TEXT NOT NULL, " +
+      "updated_at INTEGER NOT NULL" +
+    ")"
+  );
   const versionRow = db.prepare("SELECT value FROM meta WHERE key = 'version'").get() as { value?: string } | undefined;
   if (versionRow && versionRow.value !== String(HASH_STORE_VERSION)) {
     db.exec("DELETE FROM snapshots");
@@ -159,7 +169,7 @@ function buildStore(
     "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
   ).run(String(HASH_STORE_VERSION));
   const getStmt = db.prepare("SELECT hashes FROM snapshots WHERE path = ? AND checksum = ? AND line_count = ?");
-  const allStmt = db.prepare("SELECT path FROM snapshots UNION SELECT path FROM undo");
+  const allStmt = db.prepare("SELECT path FROM snapshots UNION SELECT path FROM undo UNION SELECT path FROM served");
   const allHashesStmt = db.prepare("SELECT path, hashes FROM snapshots");
   const delStmt = db.prepare("DELETE FROM snapshots WHERE path = ?");
   const upsertStmt = db.prepare(
@@ -174,6 +184,12 @@ function buildStore(
     "SELECT content, bom, ending, hashes, result_content FROM undo WHERE path = ?"
   );
   const undoDelStmt = db.prepare("DELETE FROM undo WHERE path = ?");
+  const servedGetStmt = db.prepare("SELECT hashes FROM served WHERE path = ?");
+  const servedUpsertStmt = db.prepare(
+    "INSERT INTO served (path, hashes, updated_at) VALUES (?, ?, ?) " +
+    "ON CONFLICT(path) DO UPDATE SET hashes = excluded.hashes, updated_at = excluded.updated_at"
+  );
+  const servedDelStmt = db.prepare("DELETE FROM served WHERE path = ?");
   const stmts: Prepared = {
     get: (...params) => getStmt.get(...params) as Record<string, unknown> | undefined,
     allPaths: (...params) => allStmt.all(...params) as Record<string, unknown>[],
@@ -183,6 +199,9 @@ function buildStore(
     undoUpsert: (...params) => { withBusyRetry(() => { undoUpsertStmt.run(...params); }); },
     undoGet: (...params) => undoGetStmt.get(...params) as Record<string, unknown> | undefined,
     undoDelete: (...params) => { withBusyRetry(() => { undoDelStmt.run(...params); }); },
+    servedGet: (...params) => servedGetStmt.get(...params) as Record<string, unknown> | undefined,
+    servedUpsert: (...params) => { withBusyRetry(() => { servedUpsertStmt.run(...params); }); },
+    servedDelete: (...params) => { withBusyRetry(() => { servedDelStmt.run(...params); }); },
   };
   return { db, stmts };
 }
@@ -459,6 +478,7 @@ export async function pruneMissing(store: HashStore): Promise<void> {
     for (const path of missing) {
       store.stmts.deleteOne(path);
       store.stmts.undoDelete(path);
+      store.stmts.servedDelete(path);
     }
   });
 }

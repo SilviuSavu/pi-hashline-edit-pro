@@ -1,7 +1,7 @@
 import { abortIf, rejectUnknownFields, firstNonEmptyIndex, lastNonEmptyIndex, clipLine } from "../utils";
-import { HASH_CLASS, HL_BARE_PREFIX_RE, HL_PREFIX_PLUS_RE, HL_PREFIX_MINUS_RE, canon } from "./hash";
+import { HASH_CLASS, HASH_SEP, HL_BARE_PREFIX_RE, HL_PREFIX_PLUS_RE, HL_PREFIX_MINUS_RE, canon } from "./hash";
 import { parseHashRef, parseText, type Anchor } from "./parse";
-import { NEW_CONTENT_NOT_STRING_MSG } from "../constants";
+import { NEW_CONTENT_NOT_STRING_MSG, MAX_RANGE_STALE_LINES } from "../constants";
 
 export type RAnchor = {
 	line: number;
@@ -474,6 +474,57 @@ export function valEdit(
 		mismatches,
 		boundaryDups,
 	};
+}
+
+export class RangeStaleError extends Error {
+  readonly firstMismatchLine: number;
+  readonly rangeHashes: string[];
+  constructor(message: string, firstMismatchLine: number, rangeHashes: string[]) {
+    super(message);
+    this.name = "RangeStaleError";
+    this.firstMismatchLine = firstMismatchLine;
+    this.rangeHashes = rangeHashes;
+  }
+}
+
+export function assertRangeServed(
+  resolved: RHEdit,
+  fileLines: string[],
+  fileHashes: string[],
+  served: ReadonlySet<string>,
+  filePath?: string,
+): void {
+  assertAligned(fileLines, fileHashes, "assertRangeServed");
+  const startLine = resolved.hash_bounds[0].line;
+  const endLine = resolved.hash_bounds[1].line;
+  const mismatchLines: number[] = [];
+  for (let line = startLine; line <= endLine; line++) {
+    if (!served.has(fileHashes[line - 1]!)) mismatchLines.push(line);
+  }
+  if (mismatchLines.length === 0) return;
+
+  const rangeLength = endLine - startLine + 1;
+  const shownLength = Math.min(rangeLength, MAX_RANGE_STALE_LINES);
+  const rows: string[] = [];
+  const shownHashes: string[] = [];
+  for (let line = startLine; line < startLine + shownLength; line++) {
+    const hash = fileHashes[line - 1]!;
+    shownHashes.push(hash);
+    rows.push(`${hash}${HASH_SEP}${fileLines[line - 1]}`);
+  }
+  const location = filePath ? ` in ${filePath}` : "";
+  const first = mismatchLines[0]!;
+  const mismatchText =
+    mismatchLines.length === 1
+      ? `Line ${first} of the replaced range (lines ${startLine}-${endLine})${location} does not match`
+      : `${mismatchLines.length} of ${rangeLength} line(s) in the replaced range (lines ${startLine}-${endLine})${location} do not match`;
+  const capHint =
+    rangeLength > shownLength
+      ? `\n\n[The range has ${rangeLength} lines; showing the first ${shownLength}. Call read() with offset=${startLine + shownLength} to see the rest.]`
+      : "";
+  const message =
+    `[E_RANGE_STALE] ${mismatchText} what was previously shown: the file changed on disk after the anchors were read, or the line(s) were never shown. Nothing was modified. Current range with fresh anchors:\n\n${rows.join("\n")}${capHint}`;
+  throw new RangeStaleError(message, first, shownHashes);
 }
 
 export { warnUnicodeEsc };

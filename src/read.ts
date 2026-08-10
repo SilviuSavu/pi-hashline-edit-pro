@@ -12,9 +12,10 @@ import { loadFileKindAndText } from "./file-kind";
 import { readNormFile } from "./file-reader";
 import { lineHashes, fmtRegion, HASH_SEP, MAX_HASH_LINES } from "./hashline";
 import { toCwd } from "./paths";
-import { abortIf, isRec, normalizeFilePath } from "./utils";
+import { abortIf, isRec, normalizeFilePath, visLines } from "./utils";
 import { fileSnap } from "./file-reader";
-import { visLines } from "./utils";
+import { loadHashStore } from "./hash-store";
+import { recordServed } from "./served";
 import { loadP, loadGuide } from "./prompts";
 import { valAccess } from "./validation";
 
@@ -59,7 +60,7 @@ export async function fmtReadPreview(
 	path?: string,
 	maxLineBytes = MAX_READ_LINE_BYTES,
 	maxTruncLines = DEFAULT_MAX_LINES,
-): Promise<{ text: string; truncation?: TruncationResult; nextOffset?: number }> {
+): Promise<{ text: string; truncation?: TruncationResult; nextOffset?: number; servedHashes: string[] }> {
 	const allLines = visLines(text);
 	const totalLines = allLines.length;
 	const startLine = normPosInt(options.offset, "offset") ?? 1;
@@ -69,15 +70,18 @@ export async function fmtReadPreview(
       const emptyLineHash = allHashes[0] ?? "";
       return {
 				text: `${emptyLineHash}${HASH_SEP}\n[File is empty. Use replace to insert content.]`,
+				servedHashes: emptyLineHash ? [emptyLineHash] : [],
 			};
 		}
 		return {
 			text: `Offset ${startLine} is beyond end of file (0 lines total). The file is empty. Use replace to insert content.`,
+			servedHashes: [],
 		};
 	}
 	if (startLine > totalLines) {
 		return {
 			text: `Offset ${startLine} is beyond end of file (${totalLines} lines total). Use offset=1 to read from the start, or offset=${totalLines} to read the last line.`,
+			servedHashes: [],
 		};
 	}
 
@@ -104,6 +108,11 @@ export async function fmtReadPreview(
 		const skippedTruncation = truncateHead(rows.join("\n"), { maxBytes, maxLines: maxTruncLines });
 		const shownRowCount = skippedTruncation.content === "" ? 0 : skippedTruncation.content.split("\n").length;
 		const lastShownLine = shownRowCount > 0 ? startLine + shownRowCount - 1 : startLine - 1;
+		const oversizedIndexes = new Set(rowSizes.map((row, index) => row.bytes > maxBytes ? index : -1).filter((index) => index >= 0));
+		const servedHashes: string[] = [];
+		for (let index = 0; index < Math.min(shownRowCount, rows.length); index++) {
+			if (!oversizedIndexes.has(index)) servedHashes.push(selectedHashes[index]!);
+		}
 		const lineLabel = oversized.length === 1 ? `Line ${oversized[0]!.lineNumber}` : `Lines ${oversized.map((row) => row.lineNumber).join(", ")}`;
 		const verb = oversized.length === 1 ? "exceeds" : "exceed";
 		const addresses = oversized.map((row) => `${row.lineNumber}p`).join(";");
@@ -120,6 +129,7 @@ export async function fmtReadPreview(
 			text: preview,
 			truncation: skippedTruncation.truncated ? skippedTruncation : undefined,
 			...(nextOffset !== undefined ? { nextOffset } : {}),
+			servedHashes,
 		};
 	}
 
@@ -127,6 +137,8 @@ export async function fmtReadPreview(
 
 	let preview = truncation.content;
 	let nextOffset: number | undefined;
+	const shownCount = truncation.content === "" ? 0 : truncation.content.split("\n").length;
+	const servedHashes = selectedHashes.slice(0, shownCount);
 	if (truncation.truncated) {
 		const endLineDisplay = startLine + truncation.outputLines - 1;
 		nextOffset = endLineDisplay + 1;
@@ -144,6 +156,7 @@ export async function fmtReadPreview(
 		text: preview,
 		truncation: truncation.truncated ? truncation : undefined,
 		...(nextOffset !== undefined ? { nextOffset } : {}),
+		servedHashes,
 	};
 }
 
@@ -198,7 +211,7 @@ export function regRead(pi: ExtensionAPI): void {
 				) => ReturnType<typeof builtinRead.execute>;
 				return executeBuiltinRead(_toolCallId, params, signal, _onUpdate, ctx);
 			}
-      const { normalized, fileHashes, hadUtf8DecodeErrors } = await readNormFile(
+      const { normalized, fileHashes, hadUtf8DecodeErrors, absolutePath: resolvedPath } = await readNormFile(
         rawPath, ctx.cwd, { signal, preloadedFile: file, maxLines: MAX_HASH_LINES },
       );
 			const preview = await fmtReadPreview(
@@ -208,8 +221,14 @@ export function regRead(pi: ExtensionAPI): void {
 					limit: params.limit,
 				},
 				fileHashes,
-				absolutePath,
+				resolvedPath,
 			);
+			try {
+				const store = await loadHashStore();
+				recordServed(store, resolvedPath, preview.servedHashes);
+			} catch (error) {
+				console.error("Failed to record served state from read:", error);
+			}
 			let snapshotId: string | undefined;
 			try {
 				snapshotId = (await fileSnap(absolutePath)).snapshotId;

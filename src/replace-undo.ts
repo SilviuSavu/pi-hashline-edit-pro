@@ -3,6 +3,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { loadHashStore, upsertSnapshot, upsertUndo, getUndoEntry, deleteUndo, type UndoRecord } from "./hash-store";
+import { recordServedDiff } from "./served";
 import { contentChecksum } from "./hashline/hasher";
 import { resolveTarget, writeAtomic } from "./fs-write";
 import { toCwd } from "./paths";
@@ -174,6 +175,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
         try {
           const store = await loadHashStore();
           upsertSnapshot(store, mutationTargetPath, contentChecksum(undo.content), splitLines(undo.content).length, undo.hashes);
+          recordServedDiff(store, mutationTargetPath, undoDiff);
         } catch (error) {
           console.error("Failed to restore hash store snapshot after undo:", error);
         }
