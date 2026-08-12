@@ -63,7 +63,7 @@ Lines up to 200KB are shown in full. Larger lines are replaced by a marker with 
 
 Edge cases:
 
-- Images (JPEG, PNG, GIF, WebP, AVIF, HEIC/HEIF, TIFF, ICO, JPEG 2000, JPEG XL, PSD, APNG) come back as visual attachments.
+- Images (JPEG, PNG, GIF, WebP, BMP) come back as visual attachments. Other image formats (for example AVIF, HEIC/HEIF, TIFF, ICO, JPEG 2000, JPEG XL, PSD, APNG) are rejected as binary, since the built-in renderer cannot attach them.
 - Binary files and directories are rejected with a descriptive error. A magic-signature match is ignored when the sampled bytes contain no NUL bytes and decode as UTF-8, so a text file whose first bytes happen to match a binary or image signature (for example starting with `BM` or `8BPS`) is still read as text.
 - UTF-16 and UTF-32 text (detected via BOM) is rejected, since editing it would corrupt the file.
 - Empty files come back as a single empty-line hash (`HASH│`); use `replace` on that hash to insert content.

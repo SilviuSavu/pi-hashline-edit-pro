@@ -190,7 +190,7 @@ describe("loadFileKindAndText — image detection", () => {
     pngChunk("acTL", acTLData),
   ]);
 
-  it("detects AVIF, HEIC, and HEIF ftyp brands as images", async () => {
+  it("treats AVIF, HEIC, and HEIF ftyp brands as binary", async () => {
     await withTempFile("placeholder.txt", "x", async ({ cwd }) => {
       const cases: [string, string][] = [
         ["avif", "image/avif"],
@@ -201,13 +201,13 @@ describe("loadFileKindAndText — image detection", () => {
         const path = join(cwd, `img-${brand}.bin`);
         await writeFile(path, ftypBox(brand));
         const result = await loadFileKindAndText(path);
-        expect(result.kind, brand).toBe("image");
-        if (result.kind === "image") expect(result.mimeType).toBe(mime);
+        expect(result.kind, brand).toBe("binary");
+        if (result.kind === "binary") expect(result.description).toBe(mime);
       }
     });
   });
 
-  it("detects TIFF, ICO, JXL, JP2, PSD, and APNG as images", async () => {
+  it("treats TIFF, ICO, JXL, JP2, PSD, and APNG as binary", async () => {
     await withTempFile("placeholder.txt", "x", async ({ cwd }) => {
       const tiff = Buffer.concat([
         Buffer.from([0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00]),
@@ -231,9 +231,20 @@ describe("loadFileKindAndText — image detection", () => {
         const path = join(cwd, `img-${name}.bin`);
         await writeFile(path, bytes);
         const result = await loadFileKindAndText(path);
-        expect(result.kind, name).toBe("image");
-        if (result.kind === "image") expect(result.mimeType).toBe(mime);
+        expect(result.kind, name).toBe("binary");
+        if (result.kind === "binary") expect(result.description).toBe(mime);
       }
+    });
+  });
+
+  it("detects a real BMP as an image attachment", async () => {
+    await withTempFile("placeholder.txt", "x", async ({ cwd }) => {
+      const bmp = Buffer.from([0x42, 0x4d, 0x36, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00]);
+      const path = join(cwd, "img.bmp");
+      await writeFile(path, bmp);
+      const result = await loadFileKindAndText(path);
+      expect(result.kind).toBe("image");
+      if (result.kind === "image") expect(result.mimeType).toBe("image/bmp");
     });
   });
 

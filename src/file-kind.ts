@@ -3,21 +3,11 @@ import { fileTypeFromBuffer } from "file-type";
 import { SNIFF_BYTES, MAX_BYTES } from "./constants";
 
 const IMG_TYPES = new Set<string>([
-  "image/apng",
-  "image/avif",
+  "image/bmp",
   "image/gif",
-  "image/heic",
-  "image/heic-sequence",
-  "image/heif",
-  "image/heif-sequence",
-  "image/jp2",
   "image/jpeg",
-  "image/jxl",
   "image/png",
-  "image/tiff",
-  "image/vnd.adobe.photoshop",
   "image/webp",
-  "image/x-icon",
 ]);
 
 const TEXT_TYPES = new Set<string>([
