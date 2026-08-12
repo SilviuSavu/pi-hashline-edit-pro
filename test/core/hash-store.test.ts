@@ -11,6 +11,8 @@ import {
   upsertSnapshot,
   upsertUndo,
   getUndoEntry,
+  isValidHashList,
+  SNAPSHOT_CACHE_LIMIT,
   deleteUndo,
   pruneMissing,
   type HashStore,
@@ -337,6 +339,28 @@ describe("hash-store — migration from legacy hash-store.json", () => {
       expect(getSnapshot(store, "/dup.ts", "a\nb\n")).toBeUndefined();
       expect(getSnapshot(store, "/valid.ts", "ok\n")).toEqual(["ABC"]);
     });
+  });
+
+  it("warns when skipping a legacy snapshot with duplicate hashes", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await withTempHome(async (home) => {
+        await writeLegacyStore(home, {
+          "/dup.ts": { content: "a\nb\n", hashes: ["AAA", "AAA"] },
+          "/valid.ts": { content: "ok\n", hashes: ["ABC"] },
+        });
+
+        const store = await loadHashStore();
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          "Skipped legacy snapshot with duplicate hashes for /dup.ts; it will be re-hashed on next read.",
+        );
+        expect(getSnapshot(store, "/dup.ts", "a\nb\n")).toBeUndefined();
+        expect(getSnapshot(store, "/valid.ts", "ok\n")).toEqual(["ABC"]);
+      });
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it("skips legacy snapshots with malformed hashes so they re-hash on next read", async () => {
@@ -673,6 +697,77 @@ describe("hash-store — schema versioning", () => {
       const row = check.prepare("SELECT value FROM meta WHERE key = 'version'").get() as { value?: string } | undefined;
       check.close();
       expect(row?.value).toBe(String(HASH_STORE_VERSION));
+    });
+  });
+});
+
+describe("hash-store — isValidHashList", () => {
+  it("accepts a unique list of valid hashes", () => {
+    expect(isValidHashList(["aB3", "xY7", "Zz9"])).toBe(true);
+    expect(isValidHashList([])).toBe(true);
+  });
+
+  it("rejects duplicate hashes", () => {
+    expect(isValidHashList(["aB3", "aB3"])).toBe(false);
+    expect(isValidHashList(["aB3", "xY7", "aB3"])).toBe(false);
+  });
+
+  it("rejects malformed or non-string entries", () => {
+    expect(isValidHashList(["aB3", "ZZ"])).toBe(false);
+    expect(isValidHashList(["aB3", 42])).toBe(false);
+    expect(isValidHashList("aB3")).toBe(false);
+    expect(isValidHashList(null)).toBe(false);
+  });
+});
+
+describe("hash-store — snapshot cache", () => {
+  it("serves repeated reads from memory without touching the database", async () => {
+    await withTempHome(async () => {
+      const store = await loadHashStore();
+      const checksum = contentChecksum("a\nb\n");
+      upsertSnapshot(store, "/cache-hit.ts", checksum, 2, ["AAA", "BBB"]);
+      const getSpy = vi.spyOn(store.stmts, "get");
+      expect(getSnapshot(store, "/cache-hit.ts", "a\nb\n")).toEqual(["AAA", "BBB"]);
+      expect(getSnapshot(store, "/cache-hit.ts", "a\nb\n")).toEqual(["AAA", "BBB"]);
+      expect(getSpy).not.toHaveBeenCalled();
+      getSpy.mockRestore();
+    });
+  });
+
+  it("evicts least-recently-used entries beyond the cache limit", async () => {
+    await withTempHome(async () => {
+      const store = await loadHashStore();
+      const checksum = contentChecksum("x");
+      for (let i = 0; i < SNAPSHOT_CACHE_LIMIT; i++) {
+        upsertSnapshot(store, `/lru-${i}.ts`, checksum, 1, ["AAA"]);
+      }
+      expect(getSnapshot(store, "/lru-0.ts", "x")).toEqual(["AAA"]);
+      upsertSnapshot(store, "/lru-extra.ts", checksum, 1, ["AAA"]);
+      const getSpy = vi.spyOn(store.stmts, "get");
+      expect(getSnapshot(store, "/lru-0.ts", "x")).toEqual(["AAA"]);
+      expect(getSpy).not.toHaveBeenCalled();
+      getSpy.mockClear();
+      expect(getSnapshot(store, "/lru-1.ts", "x")).toEqual(["AAA"]);
+      expect(getSpy).toHaveBeenCalled();
+      getSpy.mockRestore();
+    });
+  });
+
+  it("returns an independent copy so caller mutation cannot poison the cache", async () => {
+    await withTempHome(async () => {
+      let store = await loadHashStore();
+      const checksum = contentChecksum("a\nb\n");
+      upsertSnapshot(store, "/mutable.ts", checksum, 2, ["AAA", "BBB"]);
+
+      const cachedHit = getSnapshot(store, "/mutable.ts", "a\nb\n")!;
+      cachedHit[0] = "ZZZ";
+      expect(getSnapshot(store, "/mutable.ts", "a\nb\n")).toEqual(["AAA", "BBB"]);
+
+      shutdownHashStore();
+      store = await loadHashStore();
+      const dbHit = getSnapshot(store, "/mutable.ts", "a\nb\n")!;
+      dbHit[1] = "YYY";
+      expect(getSnapshot(store, "/mutable.ts", "a\nb\n")).toEqual(["AAA", "BBB"]);
     });
   });
 });

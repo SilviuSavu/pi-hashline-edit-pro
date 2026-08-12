@@ -3,10 +3,21 @@ import { fileTypeFromBuffer } from "file-type";
 import { SNIFF_BYTES, MAX_BYTES } from "./constants";
 
 const IMG_TYPES = new Set<string>([
-  "image/jpeg",
-  "image/png",
+  "image/apng",
+  "image/avif",
   "image/gif",
+  "image/heic",
+  "image/heic-sequence",
+  "image/heif",
+  "image/heif-sequence",
+  "image/jp2",
+  "image/jpeg",
+  "image/jxl",
+  "image/png",
+  "image/tiff",
+  "image/vnd.adobe.photoshop",
   "image/webp",
+  "image/x-icon",
 ]);
 
 const TEXT_TYPES = new Set<string>([
@@ -37,6 +48,16 @@ function detectTextBom(sample: Uint8Array): string | undefined {
 
 function isTextType(mimeType: string): boolean {
   return mimeType.startsWith("text/") || TEXT_TYPES.has(mimeType);
+}
+
+function looksLikeText(sample: Uint8Array): boolean {
+  if (sample.includes(0)) return false;
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(sample);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export type LFile =
@@ -96,7 +117,8 @@ export async function loadFileKindAndText(
     const detectedMimeType = (await fileTypeFromBuffer(sample))?.mime;
     if (
       detectedMimeType !== undefined &&
-      !isTextType(detectedMimeType)
+      !isTextType(detectedMimeType) &&
+      !looksLikeText(sample)
     ) {
       if (IMG_TYPES.has(detectedMimeType)) {
         return { kind: "image", mimeType: detectedMimeType };

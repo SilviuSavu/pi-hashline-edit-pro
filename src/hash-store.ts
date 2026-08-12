@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import { readFile, rename, mkdir, stat } from "fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { hashStorePath, hashStoreDir, legacyHashStorePath } from "./paths";
-import { errCode, splitLines } from "./utils";
+import { errCode, isRec, splitLines } from "./utils";
 import { initHasher, contentChecksum } from "./hashline/hasher";
 import { HASH_RE } from "./hashline/alphabet";
 import { HASH_STORE_VERSION, HASH_STORE_BUSY_TIMEOUT } from "./constants";
@@ -45,6 +45,7 @@ export function isValidHashList(value: unknown): value is string[] {
   for (const hash of value) {
     if (typeof hash !== "string" || !HASH_RE.test(hash)) return false;
   }
+  if (new Set(value).size !== value.length) return false;
   return true;
 }
 
@@ -107,6 +108,13 @@ function openDbWithBusyRetry(storePath: string): { db: DatabaseSync; stmts: Prep
 let cachedDb: { path: string; db: DatabaseSync; stmts: Prepared } | null = null;
 let opening: { path: string; promise: Promise<HashStore> } | null = null;
 let exitHandlerRegistered = false;
+interface SnapshotCacheEntry {
+  checksum: string;
+  lineCount: number;
+  hashes: string[];
+}
+const snapshotCache = new Map<string, SnapshotCacheEntry>();
+export const SNAPSHOT_CACHE_LIMIT = 256;
 function openDb(storePath: string): { db: DatabaseSync; stmts: Prepared } {
   const db = new DatabaseSync(storePath, {
     timeout: HASH_STORE_BUSY_TIMEOUT,
@@ -301,6 +309,7 @@ export function shutdownHashStore(): void {
     shutdownDb(cachedDb.db);
     cachedDb = null;
   }
+  snapshotCache.clear();
 }
 
 function withStore(fn: () => void): void {
@@ -344,11 +353,17 @@ async function migrateLegacy(db: DatabaseSync): Promise<void> {
 
   const rows: [string, string, number, string, number][] = [];
   for (const [key, value] of Object.entries(raw)) {
-    if (!isValidSnapshot(value)) continue;
-    if (new Set(value.hashes).size !== value.hashes.length) {
-      console.warn(`Skipped legacy snapshot with duplicate hashes for ${key}; it will be re-hashed on next read.`);
+    if (
+      isRec(value) &&
+      Array.isArray(value.hashes) &&
+      new Set(value.hashes).size !== value.hashes.length
+    ) {
+      console.warn(
+        `Skipped legacy snapshot with duplicate hashes for ${key}; it will be re-hashed on next read.`,
+      );
       continue;
     }
+    if (!isValidSnapshot(value)) continue;
     rows.push([
       key,
       contentChecksum(value.content),
@@ -378,6 +393,15 @@ async function migrateLegacy(db: DatabaseSync): Promise<void> {
   }
 }
 
+function cacheSnapshot(path: string, checksum: string, lineCount: number, hashes: string[]): void {
+  snapshotCache.delete(path);
+  snapshotCache.set(path, { checksum, lineCount, hashes: hashes.slice() });
+  if (snapshotCache.size > SNAPSHOT_CACHE_LIMIT) {
+    const oldest = snapshotCache.keys().next().value;
+    if (oldest !== undefined) snapshotCache.delete(oldest);
+  }
+}
+
 export function getSnapshot(
   store: HashStore,
   path: string,
@@ -386,17 +410,29 @@ export function getSnapshot(
 ): string[] | undefined {
   const checksum = contentChecksum(content);
   const lineCount = splitLines(content).length;
+  const cached = snapshotCache.get(path);
+  if (cached && cached.checksum === checksum && cached.lineCount === lineCount) {
+    snapshotCache.delete(path);
+    snapshotCache.set(path, cached);
+    return cached.hashes.slice();
+  }
   const row = store.stmts.get(path, checksum, lineCount);
   if (!row) return undefined;
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(row.hashes as string);
-    if (isValidHashList(parsed)) return parsed;
-    if (deleteCorrupt) store.stmts.deleteOne(path);
-    return undefined;
+    parsed = JSON.parse(row.hashes as string);
   } catch {
     if (deleteCorrupt) store.stmts.deleteOne(path);
+    snapshotCache.delete(path);
     return undefined;
   }
+  if (isValidHashList(parsed)) {
+    cacheSnapshot(path, checksum, lineCount, parsed);
+    return parsed;
+  }
+  if (deleteCorrupt) store.stmts.deleteOne(path);
+  snapshotCache.delete(path);
+  return undefined;
 }
 
 export function upsertSnapshot(
@@ -407,6 +443,7 @@ export function upsertSnapshot(
   hashes: string[],
 ): void {
   store.stmts.upsert(path, checksum, lineCount, JSON.stringify(hashes), Date.now());
+  cacheSnapshot(path, checksum, lineCount, hashes);
 }
 
 export function upsertUndo(store: HashStore, path: string, entry: UndoRecord): void {
@@ -477,6 +514,7 @@ export async function pruneMissing(store: HashStore): Promise<void> {
   withStore(() => {
     for (const path of missing) {
       store.stmts.deleteOne(path);
+      snapshotCache.delete(path);
       store.stmts.undoDelete(path);
       store.stmts.servedDelete(path);
     }

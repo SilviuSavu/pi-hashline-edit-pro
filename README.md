@@ -63,8 +63,8 @@ Lines up to 200KB are shown in full. Larger lines are replaced by a marker with 
 
 Edge cases:
 
-- Images (JPEG, PNG, GIF, WebP) come back as visual attachments.
-- Binary files and directories are rejected with a descriptive error.
+- Images (JPEG, PNG, GIF, WebP, AVIF, HEIC/HEIF, TIFF, ICO, JPEG 2000, JPEG XL, PSD, APNG) come back as visual attachments.
+- Binary files and directories are rejected with a descriptive error. A magic-signature match is ignored when the sampled bytes contain no NUL bytes and decode as UTF-8, so a text file whose first bytes happen to match a binary or image signature (for example starting with `BM` or `8BPS`) is still read as text.
 - UTF-16 and UTF-32 text (detected via BOM) is rejected, since editing it would corrupt the file.
 - Empty files come back as a single empty-line hash (`HASH│`); use `replace` on that hash to insert content.
 - BOMs are stripped for display. Non-UTF-8 bytes are shown as `U+FFFD`; editing such a file rewrites it as UTF-8, with a warning.
@@ -114,7 +114,6 @@ Notes:
 
 Enabled by default. After a successful `write` that changes the file, the extension reads the file and appends an `--- Auto-read (hashline anchors) ---` block to the result, so you get fresh `HASH│content` anchors without a separate `read` call.
 
-- After `replace` and `undo_last_replace`, the result shows the post-edit diff. The `+HASH│` and ` HASH│` rows carry the current hashes, so follow-up edits can anchor on the diff directly. Call `read` when you want the full file's anchors.
 - After `replace` and `undo_last_replace`, the result shows the post-edit diff. The `+HASH│` and ` HASH│` rows carry the current hashes, so follow-up edits can anchor on the diff directly. The `-HASH│` rows show removed lines with their old hashes, so you can see exactly which anchors were deleted (those hashes are stale after the edit). Call `read` when you want the full file's anchors.
 - Auto-read keeps a 50KB display budget. Lines over 50KB are skipped with a marker instead of their content (use `read` for lines up to 200KB).
 - Toggle at runtime with `/toggle-auto-read`; the setting persists across sessions.
