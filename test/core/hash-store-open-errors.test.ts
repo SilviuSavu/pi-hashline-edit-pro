@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import { mkdtemp, rm } from "fs/promises";
 import { join } from "path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -69,6 +70,7 @@ vi.mock("fs/promises", async (importOriginal) => {
 let tmpHome: string;
 
 beforeAll(async () => {
+  mkdirSync(join(process.cwd(), ".tmp"), { recursive: true });
   tmpHome = await mkdtemp(join(process.cwd(), ".tmp", "hash-store-open-errors-"));
   vi.stubEnv("HOME", tmpHome);
   vi.stubEnv("XDG_CONFIG_HOME", "");
