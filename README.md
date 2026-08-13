@@ -1,5 +1,7 @@
 # pi-hashline-edit-pro
 
+[![npm version](https://img.shields.io/npm/v/pi-hashline-edit-pro.svg)](https://www.npmjs.com/package/pi-hashline-edit-pro) [![npm downloads](https://img.shields.io/npm/dm/pi-hashline-edit-pro.svg)](https://www.npmjs.com/package/pi-hashline-edit-pro)
+
 Hash-anchored `read` and `replace` tools for [pi-coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent). Every line of a file gets a unique 3-character hash, and you edit by hash. No line numbers, no fuzzy matching, no edits landing on the wrong line.
 
 Fork of [pi-hashline-edit](https://github.com/RimuruW/pi-hashline-edit) by RimuruW, extended with 3-character hashes and collision resolution.
