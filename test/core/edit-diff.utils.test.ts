@@ -142,4 +142,54 @@ describe("genDiff", () => {
     const cLine = diff.split("\n").find((line) => line.endsWith("│c"))!;
     expect(cLine.startsWith(` ${hashes[2]}`)).toBe(true);
   });
+
+  it("marks skipped lines before the first change with an ellipsis", () => {
+    const top = Array.from({ length: 10 }, (_, i) => `u${i + 1}`).join("\n");
+    const oldContent = `${top}\nOLD\nx\ny\n`;
+    const newContent = `${top}\nNEW\nx\ny\n`;
+    const { diff } = genDiff(oldContent, newContent, 2);
+    const lines = diff.split("\n");
+    expect(lines[0].trim()).toBe("...");
+    expect(lines[1].endsWith("│u9")).toBe(true);
+  });
+
+  it("marks skipped lines between two changes with an ellipsis", () => {
+    const middle = Array.from({ length: 10 }, (_, i) => `u${i + 1}`).join("\n");
+    const oldContent = `a\nb\nOLD1\n${middle}\nOLD2\nc\nd\n`;
+    const newContent = `a\nb\nNEW1\n${middle}\nNEW2\nc\nd\n`;
+    const { diff } = genDiff(oldContent, newContent, 2);
+    const lines = diff.split("\n");
+    const markers = lines.filter((line) => line.trim() === "...");
+    expect(markers).toHaveLength(1);
+    const markerIdx = lines.findIndex((line) => line.trim() === "...");
+    expect(lines[markerIdx - 1]!.endsWith("│u2")).toBe(true);
+    expect(lines[markerIdx + 1]!.endsWith("│u9")).toBe(true);
+  });
+
+  it("shows all lines of a middle block that fits within twice the context", () => {
+    const oldContent = "a\nb\nOLD1\nu1\nu2\nu3\nOLD2\nc\nd\n";
+    const newContent = "a\nb\nNEW1\nu1\nu2\nu3\nNEW2\nc\nd\n";
+    const { diff } = genDiff(oldContent, newContent, 2);
+    const lines = diff.split("\n");
+    expect(lines.some((line) => line.endsWith("│u3"))).toBe(true);
+    expect(lines.filter((line) => line.trim() === "...")).toHaveLength(0);
+  });
+
+  it("marks skipped lines after the last change with a trailing ellipsis", () => {
+    const tail = Array.from({ length: 10 }, (_, i) => `u${i + 1}`).join("\n");
+    const oldContent = `a\nb\nOLD\n${tail}\n`;
+    const newContent = `a\nb\nNEW\n${tail}\n`;
+    const { diff } = genDiff(oldContent, newContent, 2);
+    const lines = diff.split("\n");
+    expect(lines.filter((line) => line.trim() === "...")).toHaveLength(1);
+    expect(lines[lines.length - 1]!.trim()).toBe("...");
+    expect(lines[lines.length - 2]!.endsWith("│u2")).toBe(true);
+  });
+
+  it("does not add a trailing ellipsis when the trailing block fits the context", () => {
+    const oldContent = "a\nb\nOLD\nu1\nu2\n";
+    const newContent = "a\nb\nNEW\nu1\nu2\n";
+    const { diff } = genDiff(oldContent, newContent, 2);
+    expect(diff.split("\n").filter((line) => line.trim() === "...")).toHaveLength(0);
+  });
 });

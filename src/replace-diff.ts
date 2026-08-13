@@ -96,6 +96,7 @@ export function genDiff(
       let linesToShow: (string | symbol)[] = displayLines;
       let skipStart = 0;
       let skipMiddle = 0;
+      let skipTail = 0;
 
       if (!lastWasChange) {
         skipStart = Math.max(0, displayLines.length - contextLines);
@@ -104,8 +105,9 @@ export function genDiff(
         const tail = displayLines.slice(-contextLines);
         linesToShow = [...displayLines.slice(0, contextLines), ELLIPSIS_MARKER, ...tail];
         skipMiddle = displayLines.length - contextLines * 2;
-      } else if (linesToShow.length > contextLines) {
+      } else if (!nextPartIsChange && linesToShow.length > contextLines) {
         linesToShow = linesToShow.slice(0, contextLines);
+        skipTail = displayLines.length - contextLines;
       }
 
       if (skipStart > 0) {
@@ -124,6 +126,9 @@ export function genDiff(
         output.push(fmtDiffLine(" ", line, hash));
         newLineNum++;
         oldLineNum++;
+      }
+      if (skipTail > 0) {
+        output.push(" ...");
       }
     } else {
       newLineNum += displayLines.length;
