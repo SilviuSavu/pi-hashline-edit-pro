@@ -54,7 +54,8 @@ export type LFile =
   | { kind: "directory" }
   | { kind: "image"; mimeType: string }
   | { kind: "text"; text: string; hadUtf8DecodeErrors?: true }
-  | { kind: "binary"; description: string };
+  | { kind: "binary"; description: string }
+  | { kind: "too_large"; description: string };
 
 
 export interface LoadFileOptions {
@@ -78,8 +79,8 @@ export async function loadFileKindAndText(
   }
   if (pathStat.size > MAX_BYTES) {
     return {
-      kind: "binary",
-      description: `file exceeds ${MAX_BYTES} byte limit`
+      kind: "too_large",
+      description: `exceeds the ${MAX_BYTES / (1024 * 1024)}MB size limit`,
     };
   }
 

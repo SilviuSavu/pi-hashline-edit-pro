@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { lineHashes } from "../../src/hashline";
+import { MAX_BYTES } from "../../src/constants";
 import { withTempFile, withTempBytes, setupIntegrationTest, useTestHome } from "../support/fixtures";
 
 const home = useTestHome();
@@ -111,6 +112,16 @@ describe("file kind guards in tools", () => {
           ctx,
         ),
       ).rejects.toThrow(/E_WOULD_EMPTY/);
+    });
+  });
+  it("read rejects files over the byte limit with E_FILE_TOO_LARGE", async () => {
+    await withTempFile("huge.txt", "x", async ({ cwd, path }) => {
+      const { truncate } = await import("fs/promises");
+      await truncate(path, MAX_BYTES + 1);
+      const { ctx, readTool } = setupIntegrationTest(cwd);
+      await expect(
+        readTool.execute("r1", { path: "huge.txt" }, undefined, undefined, ctx),
+      ).rejects.toThrow(/E_FILE_TOO_LARGE/);
     });
   });
 });

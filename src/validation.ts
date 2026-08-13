@@ -36,5 +36,10 @@ export function valKind(file: LFile, path: string): asserts file is { kind: "tex
 	if (file.kind === "image") {
 		throw new Error(`[E_NOT_TEXT] Path is an image file: ${path}. Hashline edit only supports text files.`);
 	}
+	if (file.kind === "too_large") {
+		throw new Error(
+			`[E_FILE_TOO_LARGE] File is too large: ${path} (${file.description}). Hashline editing targets source-sized files; for very large files use write or a non-line-based approach.`,
+		);
+	}
 }
 

@@ -70,7 +70,7 @@ Edge cases:
 - UTF-16 and UTF-32 text (detected via BOM) is rejected, since editing it would corrupt the file.
 - Empty files come back as a single empty-line hash (`HASH│`); use `replace` on that hash to insert content.
 - BOMs are stripped for display. Non-UTF-8 bytes are shown as `U+FFFD`; editing such a file rewrites it as UTF-8, with a warning.
-- Files over 238,328 lines are rejected with `[E_FILE_TOO_LARGE]`.
+- Files over 238,328 lines or 100MB are rejected with `[E_FILE_TOO_LARGE]`.
 
 ## The replace tool
 
@@ -171,7 +171,7 @@ A no-op replace never changes the file, so anchors remain valid. On first run af
 | `[E_UNDO_STALE]` | `undo_last_replace` refused: the file was modified or deleted after the last replace. |
 | `[E_UNDO_UNAVAILABLE]` | Undo history could not be persisted to the hash store; the `replace` was refused and the file was left unchanged. |
 | `[E_RANGE_STALE]` | A line in the replaced range no longer matches what was last shown (the file changed on disk, or the line was never shown). The edit was refused; the current range is returned with fresh anchors. |
-| `[E_FILE_TOO_LARGE]` | The file exceeds the 238,328-line hashline limit. |
+| `[E_FILE_TOO_LARGE]` | The file exceeds the 238,328-line hashline limit or the 100MB size limit. |
 
 ## Troubleshooting
 

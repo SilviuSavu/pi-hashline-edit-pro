@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
+import { MAX_BYTES } from "../../src/constants";
 import { loadFileKindAndText } from "../../src/file-kind";
 import { withTempFile } from "../support/fixtures";
 
@@ -100,6 +101,17 @@ describe("loadFileKindAndText", () => {
 			expect(result.kind).toBe("binary");
 			if (result.kind === "binary") {
 				expect(result.description).toContain("UTF-32BE");
+			}
+		});
+	});
+	it("classifies files over the byte limit as too_large", async () => {
+		await withTempFile("huge.txt", "x", async ({ path }) => {
+			const { truncate } = await import("fs/promises");
+			await truncate(path, MAX_BYTES + 1);
+			const result = await loadFileKindAndText(path);
+			expect(result.kind).toBe("too_large");
+			if (result.kind === "too_large") {
+				expect(result.description).toContain("100MB");
 			}
 		});
 	});

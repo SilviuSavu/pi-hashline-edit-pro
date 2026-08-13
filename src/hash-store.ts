@@ -49,6 +49,21 @@ export function isValidHashList(value: unknown): value is string[] {
   return true;
 }
 
+export function parseHashList(raw: string, onInvalid: () => void): string[] | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    onInvalid();
+    return undefined;
+  }
+  if (!isValidHashList(parsed)) {
+    onInvalid();
+    return undefined;
+  }
+  return parsed;
+}
+
 function isValidSnapshot(value: unknown): value is LegacySnapshot {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
@@ -418,21 +433,13 @@ export function getSnapshot(
   }
   const row = store.stmts.get(path, checksum, lineCount);
   if (!row) return undefined;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(row.hashes as string);
-  } catch {
+  const parsed = parseHashList(row.hashes as string, () => {
     if (deleteCorrupt) store.stmts.deleteOne(path);
     snapshotCache.delete(path);
-    return undefined;
-  }
-  if (isValidHashList(parsed)) {
-    cacheSnapshot(path, checksum, lineCount, parsed);
-    return parsed;
-  }
-  if (deleteCorrupt) store.stmts.deleteOne(path);
-  snapshotCache.delete(path);
-  return undefined;
+  });
+  if (!parsed) return undefined;
+  cacheSnapshot(path, checksum, lineCount, parsed);
+  return parsed;
 }
 
 export function upsertSnapshot(
@@ -461,23 +468,15 @@ export function upsertUndo(store: HashStore, path: string, entry: UndoRecord): v
 export function getUndoEntry(store: HashStore, path: string): UndoRecord | undefined {
   const row = store.stmts.undoGet(path);
   if (!row) return undefined;
-  try {
-    const parsed = JSON.parse(row.hashes as string);
-    if (!isValidHashList(parsed)) {
-      store.stmts.undoDelete(path);
-      return undefined;
-    }
-    return {
-      content: row.content as string,
-      bom: row.bom as string,
-      ending: row.ending as string,
-      hashes: parsed as string[],
-      resultContent: row.result_content as string,
-    };
-  } catch {
-    store.stmts.undoDelete(path);
-    return undefined;
-  }
+  const parsed = parseHashList(row.hashes as string, () => store.stmts.undoDelete(path));
+  if (!parsed) return undefined;
+  return {
+    content: row.content as string,
+    bom: row.bom as string,
+    ending: row.ending as string,
+    hashes: parsed,
+    resultContent: row.result_content as string,
+  };
 }
 
 export function deleteUndo(store: HashStore, path: string): void {

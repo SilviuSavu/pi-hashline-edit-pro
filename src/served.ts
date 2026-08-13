@@ -1,5 +1,5 @@
 import type { HashStore } from "./hash-store";
-import { isValidHashList } from "./hash-store";
+import { parseHashList } from "./hash-store";
 import { HASH_CLASS } from "./hashline/alphabet";
 
 const SERVED_DIFF_ROW_RE = new RegExp(`^[+ ](${HASH_CLASS})│`);
@@ -16,17 +16,9 @@ export function servedHashesFromDiff(diff: string): string[] {
 export function getServed(store: HashStore, path: string): Set<string> | undefined {
   const row = store.stmts.servedGet(path);
   if (!row) return undefined;
-  try {
-    const parsed = JSON.parse(row.hashes as string);
-    if (!isValidHashList(parsed)) {
-      store.stmts.servedDelete(path);
-      return undefined;
-    }
-    return new Set(parsed);
-  } catch {
-    store.stmts.servedDelete(path);
-    return undefined;
-  }
+  const parsed = parseHashList(row.hashes as string, () => store.stmts.servedDelete(path));
+  if (!parsed) return undefined;
+  return new Set(parsed);
 }
 
 export function recordServed(store: HashStore, path: string, hashes: string[]): void {

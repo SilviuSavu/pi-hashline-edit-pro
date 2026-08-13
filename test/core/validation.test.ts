@@ -40,6 +40,10 @@ describe("valKind", () => {
 	it("does not throw for text file", () => {
 		expect(() => valKind({ kind: "text", text: "content" }, "test.txt")).not.toThrow();
 	});
+	it("throws E_FILE_TOO_LARGE for oversized files", () => {
+		expect(() => valKind({ kind: "too_large", description: "exceeds the 100MB size limit" }, "huge.txt"))
+			.toThrow(/^\[E_FILE_TOO_LARGE\].*huge\.txt/);
+	});
 });
 
 describe("valAccess", () => {
