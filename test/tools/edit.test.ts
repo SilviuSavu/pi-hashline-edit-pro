@@ -173,8 +173,8 @@ describe("regReplace — robustness", () => {
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
       const fileReader = await import("../../src/file-reader");
       const spy = vi
-        .spyOn(fileReader, "fileSnap")
-        .mockRejectedValue(new Error("stat failed"));
+        .spyOn(fileReader, "safeSnapId")
+        .mockResolvedValue(undefined);
       try {
         const result = await editTool.execute(
           "e1",
@@ -203,8 +203,8 @@ describe("regReplace — robustness", () => {
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
       const fileReader = await import("../../src/file-reader");
       const spy = vi
-        .spyOn(fileReader, "fileSnap")
-        .mockRejectedValue(new Error("stat failed"));
+        .spyOn(fileReader, "safeSnapId")
+        .mockResolvedValue(undefined);
       try {
         const result = await editTool.execute(
           "e1",

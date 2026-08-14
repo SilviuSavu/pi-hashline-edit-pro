@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mkdtemp, rm, writeFile, symlink } from "fs/promises";
 import { join } from "path";
-import { fileSnap } from "../../src/file-reader";
+import { fileSnap, safeSnapId } from "../../src/file-reader";
 import { getWritableTempRoot } from "../support/fixtures";
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(await getWritableTempRoot(), "pi-hashline-snapshot-test-"));
@@ -106,6 +106,24 @@ describe("fileSnap", () => {
       expect(parts[3]).toBe(String(snap.mtimeMs));
       expect(parts[4]).toBe(String(snap.ctimeMs));
       expect(parts[5]).toBe(String(snap.size));
+    });
+  });
+});
+
+describe("safeSnapId", () => {
+  it("returns the snapshot id for an existing file", async () => {
+    await withTempDir(async (dir) => {
+      const filePath = join(dir, "safe.ts");
+      await writeFile(filePath, "hello\n", "utf-8");
+      const id = await safeSnapId(filePath, "test");
+      expect(id).toContain("safe.ts");
+    });
+  });
+
+  it("returns undefined when the file is missing", async () => {
+    await withTempDir(async (dir) => {
+      const missingPath = join(dir, "missing.ts");
+      expect(await safeSnapId(missingPath, "test")).toBeUndefined();
     });
   });
 });

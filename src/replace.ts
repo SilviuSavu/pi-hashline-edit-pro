@@ -11,9 +11,9 @@ import {
   restoreEndings,
   type LineEnding,
 } from "./replace-diff";
-import { readNormFile } from "./file-reader";
+import { readNormFile, safeSnapId } from "./file-reader";
 import { normReq } from "./replace-normalize";
-import { isRec, rejectUnknownFields, abortIf, normalizeFilePath } from "./utils";
+import { isRec, rejectUnknownFields, abortIf, makePrepareArguments } from "./utils";
 import { resolveTarget, writeAtomic } from "./fs-write";
 import { applyEdit,
   lineHashes,
@@ -26,7 +26,6 @@ import { applyEdit,
   type NEdit,
 } from "./hashline";
 import { toCwd } from "./paths";
-import { fileSnap } from "./file-reader";
 import {
   buildChanged,
   buildNoop,
@@ -47,7 +46,7 @@ import {
 import { loadP, loadGuide } from "./prompts";
 import { saveUndo } from "./replace-undo";
 import { loadHashStore, findSnapshotPaths, type HashStore } from "./hash-store";
-import { getServed, recordServed, recordServedDiff } from "./served";
+import { getServed, recordServedSafe, recordServedDiffSafe } from "./served";
 
 const replacementTextSchema = Type.String({
   description:
@@ -249,17 +248,9 @@ export async function execPipeline(
   } catch (error) {
     if (options?.noPersist !== true) {
       if (error instanceof RangeStaleError) {
-        try {
-          recordServed(hashStore, absolutePath, error.rangeHashes);
-        } catch (recordError) {
-          console.error("Failed to record served state from range-stale feedback:", recordError);
-        }
+        await recordServedSafe(absolutePath, error.rangeHashes, "range-stale feedback");
       } else if (error instanceof AnchorMismatchError) {
-        try {
-          recordServed(hashStore, absolutePath, error.feedbackHashes);
-        } catch (recordError) {
-          console.error("Failed to record served state from anchor-mismatch feedback:", recordError);
-        }
+        await recordServedSafe(absolutePath, error.feedbackHashes, "anchor-mismatch feedback");
       }
     }
     throw error;
@@ -361,12 +352,7 @@ export function buildToolDef(): ToolDef {
     parameters,
     promptSnippet: E_SNIPPET,
     promptGuidelines: E_GUIDE,
-    prepareArguments: (args: unknown) => {
-      if (!isRec(args)) return args as any;
-      const record = { ...args };
-      normalizeFilePath(record);
-      return record;
-    },
+    prepareArguments: makePrepareArguments(),
     renderShell: "default",
     renderCall(args, theme, context) {
       const previewInput = getPreviewInput(args);
@@ -512,12 +498,7 @@ export function buildToolDef(): ToolDef {
 
         const editsAttempted = 1;
         if (originalNormalized === result) {
-          let noopSnapshotId: string | undefined;
-          try {
-            noopSnapshotId = (await fileSnap(absolutePath)).snapshotId;
-          } catch (error) {
-            console.error("Failed to compute snapshot for noop edit:", error);
-          }
+          const noopSnapshotId = await safeSnapId(absolutePath, "noop edit");
           return buildNoop({
             path,
             noopEdit,
@@ -561,12 +542,7 @@ export function buildToolDef(): ToolDef {
           await undo.restore();
           throw error;
         }
-        let updatedSnapshotId: string | undefined;
-        try {
-          updatedSnapshotId = (await fileSnap(absolutePath)).snapshotId;
-        } catch (error) {
-          console.error("Failed to compute post-edit snapshot:", error);
-        }
+        const updatedSnapshotId = await safeSnapId(absolutePath, "post-edit");
 
         const editMeta: RMeta = {
           editsAttempted,
@@ -589,12 +565,7 @@ export function buildToolDef(): ToolDef {
         };
         const changed = buildChanged(successInput);
         if (changed.details.diff) {
-          try {
-            const store = await loadHashStore();
-            recordServedDiff(store, mutationTargetPath, changed.details.diff);
-          } catch (error) {
-            console.error("Failed to record served state from post-edit diff:", error);
-          }
+          await recordServedDiffSafe(mutationTargetPath, changed.details.diff, "post-edit diff");
         }
         return changed;
       });

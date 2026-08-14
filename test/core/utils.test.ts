@@ -7,6 +7,7 @@ import {
   firstNonEmptyIndex,
   lastNonEmpty,
   firstNonEmpty,
+  makePrepareArguments,
 } from "../../src/utils";
 
 describe("isRec", () => {
@@ -267,5 +268,33 @@ describe("firstNonEmpty", () => {
 
   it("handles a single non-empty line", () => {
     expect(firstNonEmpty(["hello"])).toBe("hello");
+  });
+});
+
+describe("makePrepareArguments", () => {
+  it("passes through non-record input", () => {
+    const prepare = makePrepareArguments();
+    expect(prepare(null)).toBeNull();
+    expect(prepare(42)).toBe(42);
+    expect(prepare("x")).toBe("x");
+  });
+
+  it("normalizes file_path to path", () => {
+    const prepare = makePrepareArguments();
+    const result = prepare({ file_path: "a.txt", offset: 1 });
+    expect(result).toEqual({ path: "a.txt", offset: 1 });
+  });
+
+  it("does not mutate the original input", () => {
+    const prepare = makePrepareArguments();
+    const input = { file_path: "a.txt" };
+    prepare(input);
+    expect(input).toEqual({ file_path: "a.txt" });
+  });
+
+  it("keeps an explicit path when file_path is also present", () => {
+    const prepare = makePrepareArguments();
+    const result = prepare({ path: "a.txt", file_path: "b.txt" });
+    expect(result).toEqual({ path: "a.txt", file_path: "b.txt" });
   });
 });

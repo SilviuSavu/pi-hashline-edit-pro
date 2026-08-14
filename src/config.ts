@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import { configPath } from "./paths";
-import { errCode } from "./utils";
+import { errCode, isRec } from "./utils";
 import { writeAtomic } from "./fs-write";
 
 export interface Config {
@@ -12,10 +12,12 @@ const DEFAULT_CONFIG: Config = {
 };
 
 function parseConfig(content: string): Config {
-  const parsed = JSON.parse(content) as Partial<Config>;
-  return {
-    autoRead: parsed.autoRead === true,
-  };
+  const parsed = JSON.parse(content) as unknown;
+  const autoRead = isRec(parsed) ? parsed.autoRead : undefined;
+  if (typeof autoRead !== "boolean") {
+    throw new Error("config.json must be an object with a boolean autoRead field");
+  }
+  return { autoRead };
 }
 
 

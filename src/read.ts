@@ -9,13 +9,11 @@ import {
 import { Type } from "typebox";
 import { MAX_READ_LINE_BYTES } from "./constants";
 import { loadFileKindAndText } from "./file-kind";
-import { readNormFile } from "./file-reader";
+import { readNormFile, safeSnapId } from "./file-reader";
 import { lineHashes, fmtRegion, HASH_SEP, MAX_HASH_LINES } from "./hashline";
 import { toCwd } from "./paths";
-import { abortIf, isRec, normalizeFilePath, visLines } from "./utils";
-import { fileSnap } from "./file-reader";
-import { loadHashStore } from "./hash-store";
-import { recordServed } from "./served";
+import { abortIf, makePrepareArguments, visLines } from "./utils";
+import { recordServedSafe } from "./served";
 import { loadP, loadGuide } from "./prompts";
 import { valAccess } from "./validation";
 
@@ -167,12 +165,7 @@ export function regRead(pi: ExtensionAPI): void {
 		description: R_DESC,
 		promptSnippet: R_SNIPPET,
 		promptGuidelines: readGuide(),
-		prepareArguments: (args: unknown) => {
-			if (!isRec(args)) return args as any;
-			const record = { ...args };
-			normalizeFilePath(record);
-			return record;
-		},
+		prepareArguments: makePrepareArguments(),
 		parameters: Type.Object({
 			path: Type.String({
 				description: "Path to the file to read (relative or absolute)",
@@ -223,18 +216,8 @@ export function regRead(pi: ExtensionAPI): void {
 				fileHashes,
 				resolvedPath,
 			);
-			try {
-				const store = await loadHashStore();
-				recordServed(store, resolvedPath, preview.servedHashes);
-			} catch (error) {
-				console.error("Failed to record served state from read:", error);
-			}
-			let snapshotId: string | undefined;
-			try {
-				snapshotId = (await fileSnap(absolutePath)).snapshotId;
-			} catch (error) {
-				console.error("Failed to compute snapshot for read:", error);
-			}
+			await recordServedSafe(resolvedPath, preview.servedHashes, "read");
+			const snapshotId = await safeSnapId(absolutePath, "read");
 			const previewText =
 				hadUtf8DecodeErrors
 					? `${preview.text}\n\n[Non-UTF-8 bytes shown as U+FFFD; editing rewrites the file as UTF-8.]`

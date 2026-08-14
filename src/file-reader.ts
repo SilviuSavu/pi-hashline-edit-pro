@@ -45,6 +45,18 @@ export async function fileSnap(absolutePath: string): Promise<SnapInfo> {
   };
 }
 
+export async function safeSnapId(
+  absolutePath: string,
+  context: string,
+): Promise<string | undefined> {
+  try {
+    return (await fileSnap(absolutePath)).snapshotId;
+  } catch (error) {
+    console.error(`Failed to compute snapshot (${context}):`, error);
+    return undefined;
+  }
+}
+
 export interface ReadNormOptions {
   signal?: AbortSignal;
   accessMode?: number;

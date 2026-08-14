@@ -6,9 +6,6 @@ export {
 	HASH_SPACE,
 	HASH_PROBE_STRIDE,
 	MAX_HASH_LINES,
-	HL_PREFIX_PLUS_RE,
-	HL_PREFIX_MINUS_RE,
-	HL_BARE_PREFIX_RE,
 	lineHashes,
 	_lineHashesPure,
 	initHasher,
@@ -22,7 +19,6 @@ export {
 } from "./parse";
 
 export {
-	type RAnchor,
 	type HEdit,
 	type RHEdit,
 	type HTEdit,
@@ -34,7 +30,6 @@ export {
 	stripBarePrefixes,
 	stripDiffPrefixes,
 	swapReversedRanges,
-	fmtMismatch,
 	findNewEdge,
 	assertRangeServed,
 	RangeStaleError,

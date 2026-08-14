@@ -3,7 +3,8 @@ import { mkdtemp, rm } from "fs/promises";
 import { join } from "path";
 import { DatabaseSync } from "node:sqlite";
 import { loadHashStore, shutdownHashStore, pruneMissing } from "../../src/hash-store";
-import { getServed, recordServed, clearServed, servedHashesFromDiff } from "../../src/served";
+import { getServed, recordServed, clearServed, servedHashesFromDiff, recordServedSafe, recordServedDiffSafe } from "../../src/served";
+import * as hashStoreModule from "../../src/hash-store";
 import { initHasher } from "../../src/hashline";
 import { getWritableTempRoot } from "../support/fixtures";
 
@@ -117,5 +118,42 @@ describe("servedHashesFromDiff", () => {
   it("extracts the hash of every + and context row in order", () => {
     const diff = "+AAA│x\n BBB│y\n+CCC│z\n DDD│w\n";
     expect(servedHashesFromDiff(diff)).toEqual(["AAA", "BBB", "CCC", "DDD"]);
+  });
+});
+
+describe("served safe helpers", () => {
+  it("recordServedSafe records hashes without throwing", async () => {
+    await withTempHome(async () => {
+      await recordServedSafe("/safe.ts", ["aB3", "cD4"], "test");
+      const store = await loadHashStore();
+      expect(getServed(store, "/safe.ts")).toEqual(new Set(["aB3", "cD4"]));
+    });
+  });
+
+  it("recordServedSafe skips empty hash lists", async () => {
+    await withTempHome(async () => {
+      await recordServedSafe("/safe.ts", [], "test");
+      const store = await loadHashStore();
+      expect(getServed(store, "/safe.ts")).toBeUndefined();
+    });
+  });
+
+  it("recordServedDiffSafe records diff rows", async () => {
+    await withTempHome(async () => {
+      await recordServedDiffSafe("/safe.ts", "+aB3│x\n pQ2│y\n-cD4│z\n", "test");
+      const store = await loadHashStore();
+      expect(getServed(store, "/safe.ts")).toEqual(new Set(["aB3", "pQ2"]));
+    });
+  });
+
+  it("recordServedSafe swallows store failures", async () => {
+    const spy = vi
+      .spyOn(hashStoreModule, "loadHashStore")
+      .mockRejectedValue(new Error("store down"));
+    try {
+      await expect(recordServedSafe("/safe.ts", ["aB3"], "test")).resolves.toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

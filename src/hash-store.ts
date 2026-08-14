@@ -286,7 +286,11 @@ async function openStore(storePath: string): Promise<HashStore> {
   const { db, stmts } = opened;
 
   if (!existed) {
-    await migrateLegacy(db);
+    try {
+      await migrateLegacy(db);
+    } catch (error) {
+      console.error("Hash store migration failed; continuing without legacy import:", error);
+    }
   }
   cachedDb = { path: storePath, db, stmts };
 
@@ -328,20 +332,19 @@ export function shutdownHashStore(): void {
 }
 
 function withStore(fn: () => void): void {
-  if (cachedDb) {
-    withBusyRetry(() => {
-      cachedDb!.db.exec("BEGIN IMMEDIATE");
-      try {
-        fn();
-        cachedDb!.db.exec("COMMIT");
-      } catch (e) {
-        try { cachedDb!.db.exec("ROLLBACK"); } catch {}
-        throw e;
-      }
-    });
-  } else {
-    fn();
+  if (!cachedDb) {
+    throw new Error("Hash store is not open; transactional update aborted");
   }
+  withBusyRetry(() => {
+    cachedDb!.db.exec("BEGIN IMMEDIATE");
+    try {
+      fn();
+      cachedDb!.db.exec("COMMIT");
+    } catch (e) {
+      try { cachedDb!.db.exec("ROLLBACK"); } catch {}
+      throw e;
+    }
+  });
 }
 
 async function migrateLegacy(db: DatabaseSync): Promise<void> {
@@ -388,17 +391,19 @@ async function migrateLegacy(db: DatabaseSync): Promise<void> {
     ]);
   }
   if (rows.length > 0) {
-    db.exec("BEGIN IMMEDIATE");
-    try {
-      const stmt = db.prepare(
-        "INSERT OR REPLACE INTO snapshots (path, checksum, line_count, hashes, updated_at) VALUES (?, ?, ?, ?, ?)"
-      );
-      for (const row of rows) stmt.run(...row);
-      db.exec("COMMIT");
-    } catch (e) {
-      db.exec("ROLLBACK");
-      throw e;
-    }
+    withBusyRetry(() => {
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const stmt = db.prepare(
+          "INSERT OR REPLACE INTO snapshots (path, checksum, line_count, hashes, updated_at) VALUES (?, ?, ?, ?, ?)"
+        );
+        for (const row of rows) stmt.run(...row);
+        db.exec("COMMIT");
+      } catch (e) {
+        try { db.exec("ROLLBACK"); } catch {}
+        throw e;
+      }
+    });
   }
 
   try {

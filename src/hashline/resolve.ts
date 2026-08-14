@@ -133,14 +133,6 @@ export function fmtMismatchWithHashes(
   return { text: out.join("\n"), hashes };
 }
 
-export function fmtMismatch(
-  mismatches: HMismatch[],
-  fileLines: string[],
-  fileHashes: string[],
-  filePath?: string,
-): string {
-  return fmtMismatchWithHashes(mismatches, fileLines, fileHashes, filePath).text;
-}
 
 const ITEM_KS = new Set(["replacement_text", "remove_from", "remove_to"]);
 

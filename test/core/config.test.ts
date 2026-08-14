@@ -97,3 +97,27 @@ describe("config — readConfig defaults", () => {
     });
   });
 });
+
+describe("config — wrong-shape config", () => {
+  it("falls back to defaults when config.json is not an object", async () => {
+    await withTempHome(async () => {
+      const { writeFile, mkdir } = await import("fs/promises");
+      const { join: pathJoin } = await import("path");
+      const configDir = pathJoin(tmpHome, ".config", "pi-hashline-edit-pro");
+      await mkdir(configDir, { recursive: true });
+      await writeFile(pathJoin(configDir, "config.json"), JSON.stringify([1, 2]));
+      expect((await readConfig()).autoRead).toBe(true);
+    });
+  });
+
+  it("falls back to defaults when autoRead is not a boolean", async () => {
+    await withTempHome(async () => {
+      const { writeFile, mkdir } = await import("fs/promises");
+      const { join: pathJoin } = await import("path");
+      const configDir = pathJoin(tmpHome, ".config", "pi-hashline-edit-pro");
+      await mkdir(configDir, { recursive: true });
+      await writeFile(pathJoin(configDir, "config.json"), JSON.stringify({ autoRead: "yes" }));
+      expect((await readConfig()).autoRead).toBe(true);
+    });
+  });
+});

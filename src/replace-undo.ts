@@ -8,7 +8,7 @@ import { contentChecksum } from "./hashline/hasher";
 import { resolveTarget, writeAtomic } from "./fs-write";
 import { toCwd } from "./paths";
 import { toLF, stripBOM, genDiff, restoreEndings, type LineEnding } from "./replace-diff";
-import { cntDiff, splitLines, errCode, isRec, normalizeFilePath } from "./utils";
+import { cntDiff, splitLines, errCode, makePrepareArguments } from "./utils";
 import { loadP, loadGuide } from "./prompts";
 import { buildMetrics } from "./replace-response";
 import { changedRange, lineHashes } from "./hashline";
@@ -92,12 +92,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
     description: loadP("../prompts/undo-last-replace.md"),
     promptSnippet: loadP("../prompts/undo-last-replace-snippet.md"),
     promptGuidelines: loadGuide("../prompts/undo-last-replace-guidelines.md"),
-    prepareArguments: (args: unknown) => {
-      if (!isRec(args)) return args as any;
-      const record = { ...args };
-      normalizeFilePath(record);
-      return record;
-    },
+    prepareArguments: makePrepareArguments(),
     parameters: Type.Object({
       path: Type.String({
         description: "Path to the file to undo",

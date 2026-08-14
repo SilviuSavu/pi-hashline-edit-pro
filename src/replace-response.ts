@@ -101,7 +101,7 @@ export function buildNoop(input: NoopInput): TResult {
 		? `Replacement for ${noopEdit.loc} is identical to current content:\n  ${noopEdit.loc}: ${clipLine(noopEdit.currentContent)}`
 		: "The edit produced identical content.";
 
-	const text = `No changes made to ${path}\nClassification: noop\n${noopDetailsText}`;
+	const text = `No changes made to ${path}\nClassification: noop\n${noopDetailsText}${warnBlock(warnings)}`;
 
 	const metrics = buildMetrics({
 		classification: "noop",

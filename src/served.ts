@@ -1,5 +1,4 @@
-import type { HashStore } from "./hash-store";
-import { parseHashList } from "./hash-store";
+import { loadHashStore, parseHashList, type HashStore } from "./hash-store";
 import { HASH_CLASS } from "./hashline/alphabet";
 
 const SERVED_DIFF_ROW_RE = new RegExp(`^[+ ](${HASH_CLASS})│`);
@@ -41,4 +40,27 @@ export function recordServedDiff(store: HashStore, path: string, diff: string): 
 
 export function clearServed(store: HashStore, path: string): void {
   store.stmts.servedDelete(path);
+}
+
+export async function recordServedSafe(
+  path: string,
+  hashes: string[],
+  context: string,
+): Promise<void> {
+  if (hashes.length === 0) return;
+  try {
+    const store = await loadHashStore();
+    recordServed(store, path, hashes);
+  } catch (error) {
+    console.error(`Failed to record served state (${context}):`, error);
+  }
+}
+
+export async function recordServedDiffSafe(
+  path: string,
+  diff: string,
+  context: string,
+): Promise<void> {
+  if (!diff) return;
+  await recordServedSafe(path, servedHashesFromDiff(diff), context);
 }

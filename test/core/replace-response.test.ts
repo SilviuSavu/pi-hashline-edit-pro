@@ -40,6 +40,8 @@ describe("buildNoop", () => {
       warnings: ["Warning 1"],
     });
     expect(result.details.metrics!.warnings).toBe(1);
+    expect(result.content[0].text).toContain("Warnings:");
+    expect(result.content[0].text).toContain("Warning 1");
   });
 
   it("clips long currentContent in noop details", () => {

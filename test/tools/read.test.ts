@@ -58,13 +58,13 @@ describe("fmtRegion", () => {
 });
 
 describe("read tool — snapshot failure", () => {
-  it("succeeds and omits snapshotId when fileSnap fails", async () => {
+  it("succeeds and omits snapshotId when the snapshot computation fails", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\n", async ({ cwd }) => {
       const { ctx, readTool } = setupIntegrationTest(cwd);
       const fileReader = await import("../../src/file-reader");
       const spy = vi
-        .spyOn(fileReader, "fileSnap")
-        .mockRejectedValue(new Error("stat failed"));
+        .spyOn(fileReader, "safeSnapId")
+        .mockResolvedValue(undefined);
       try {
         const result = await readTool.execute(
           "r1",

@@ -13,7 +13,7 @@ import {
   toggleAutoRead,
 } from "./src/config";
 import { loadHashStore, pruneMissing } from "./src/hash-store";
-import { recordServed, clearServed } from "./src/served";
+import { recordServedSafe, clearServed } from "./src/served";
 import { readNormFile } from "./src/file-reader";
 import { loadFileKindAndText } from "./src/file-kind";
 import { toCwd } from "./src/paths";
@@ -88,12 +88,7 @@ export default function (pi: ExtensionAPI): void {
           DEFAULT_MAX_BYTES,
           AUTO_READ_MAX,
         );
-        try {
-          const store = await loadHashStore();
-          recordServed(store, absolutePath, preview.servedHashes);
-        } catch (error) {
-          console.error("Failed to record served state from auto-read:", error);
-        }
+        await recordServedSafe(absolutePath, preview.servedHashes, "auto-read");
         return {
           content: [
             ...(event.content ?? []),
