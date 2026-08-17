@@ -455,11 +455,6 @@ export function valEdit(
 		}
 		return { resolved: undefined, mismatches, boundaryDups };
 	}
-	if (startResolved.line > endResolved.line) {
-		throw new Error(
-			`[E_BAD_OP] Range start line ${startResolved.line} must be <= end line ${endResolved.line} (anchors ${edit.hash_bounds[0].hash} and ${edit.hash_bounds[1].hash}).`,
-		);
-	}
 	const endLine = endResolved.line;
 	const rangeLines = fileLines.slice(startResolved.line - 1, endLine);
 	const canonLines = fileLines.map((line) => canon(line));

@@ -123,7 +123,6 @@ export async function loadFileKindAndText(
       return { kind: "binary", description: "contains NUL bytes" };
     }
 
-
     const decoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: true });
     let hadUtf8DecodeErrors = false;
     let newlineCount = 0;
