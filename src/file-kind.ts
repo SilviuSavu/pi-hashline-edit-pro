@@ -119,6 +119,9 @@ export async function loadFileKindAndText(
         description: detectedMimeType,
       };
     }
+    if (detectedMimeType === undefined && sample.includes(0)) {
+      return { kind: "binary", description: "contains NUL bytes" };
+    }
 
 
     const decoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: true });

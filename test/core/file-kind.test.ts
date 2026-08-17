@@ -36,12 +36,15 @@ describe("loadFileKindAndText", () => {
 		});
 	});
 
-	it("allows null bytes in text content (valid in JS string literals)", async () => {
+	it("rejects NUL-bearing content with no detected magic signature as binary", async () => {
 		await withTempFile("placeholder.txt", "x", async ({ cwd }) => {
-			const binPath = join(cwd, "binary.bin");
-			await writeFile(binPath, Buffer.from([0x48, 0x00, 0x65, 0x6c, 0x6c, 0x6f]));
+			const binPath = join(cwd, "nul.bin");
+			await writeFile(binPath, Buffer.from([0x61, 0x00, 0x62, 0x00, 0x63, 0x0a]));
 			const result = await loadFileKindAndText(binPath);
-			expect(result.kind).toBe("text");
+			expect(result.kind).toBe("binary");
+			if (result.kind === "binary") {
+				expect(result.description).toContain("NUL");
+			}
 		});
 	});
 

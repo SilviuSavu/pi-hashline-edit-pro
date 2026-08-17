@@ -5,5 +5,4 @@
 - `replace`: when copying a line from read output, remove its HASH│ prefix and keep the leading whitespace exactly as shown.
 - `replace`: replacement_lines is an array of strings, one element per line. Mirror the removed lines exactly, blank lines included: use `[]` to delete the range, `[""]` for a single blank line, `["a", ""]` for a line followed by a blank line, and `["", ""]` for two blank lines. Do not embed `\n` inside an element — each element is exactly one line.
 - `replace`: when auto-read shows the post-edit diff, its rows are the fresh anchors for the new file — `+HASH│` and ` HASH│` rows carry current hashes and unchanged lines keep their previous hashes, so you can anchor follow-up edits on the diff without re-reading.
-- `replace`: `[E_RANGE_STALE]` means a line inside the replaced range changed on disk after it was last shown (or was never shown). Nothing was modified; the error lists the current range as `HASH│content` rows, so retry with those anchors and no `read`.
 - `replace`: do not issue multiple replace calls on the same file in one message. Issue the next edit only after verifying the previous diff.

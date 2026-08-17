@@ -399,6 +399,38 @@ describe("mapStableHashes — removedHashes edge cases", () => {
     expect(result[5]).toBe(oldHashes[4]);
     expect(result[9]).toBe(oldHashes[8]);
   });
+
+  it("does not reuse a removed anchor across trailing-whitespace variants", async () => {
+    const oldContent = "a  \nb\na";
+    const oldHashes = await lineHashes(oldContent, home.testPath);
+    const spacedHash = oldHashes[0]!;
+    const plainHash = oldHashes[2]!;
+
+    const result = await lineHashes("a\na", home.testPath, {
+      content: oldContent,
+      hashes: oldHashes,
+      removedHashes: new Set([oldHashes[0]!, oldHashes[1]!]),
+    });
+
+    expect(result[1]).toBe(plainHash);
+    expect(result[0]).not.toBe(spacedHash);
+  });
+
+  it("does not reuse a removed plain anchor onto a spaced line", async () => {
+    const oldContent = "a\na  \nb";
+    const oldHashes = await lineHashes(oldContent, home.testPath);
+    const spacedHash = oldHashes[1]!;
+    const plainHash = oldHashes[0]!;
+
+    const result = await lineHashes("a  \na  ", home.testPath, {
+      content: oldContent,
+      hashes: oldHashes,
+      removedHashes: new Set([oldHashes[0]!, oldHashes[2]!]),
+    });
+
+    expect(result[1]).toBe(spacedHash);
+    expect(result[0]).not.toBe(plainHash);
+  });
 });
 
 describe("mapStableHashes — hash uniqueness guarantees", () => {

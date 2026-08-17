@@ -258,7 +258,7 @@ function mapStableHashes(
 
   const removedByContent = new Map<string, { hashes: string[]; pos: number }>();
   for (const entry of removedEntries) {
-    const key = canon(oldLines[entry.index]!);
+    const key = oldLines[entry.index]!;
     let queue = removedByContent.get(key);
     if (!queue) {
       queue = { hashes: [], pos: 0 };
@@ -269,7 +269,7 @@ function mapStableHashes(
 
   for (let i = 0; i < newLines.length; i++) {
     if (newHashes[i]) continue;
-    const queue = removedByContent.get(canon(newLines[i]!));
+    const queue = removedByContent.get(newLines[i]!);
     if (!queue || queue.pos >= queue.hashes.length) continue;
     newHashes[i] = queue.hashes[queue.pos]!;
     queue.pos += 1;
