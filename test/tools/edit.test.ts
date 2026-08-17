@@ -16,7 +16,7 @@ describe("regReplace", () => {
           "e1",
           {
             path: "sample.ts",
-            remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_text: null,
+            remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_lines: null,
           },
           undefined,
           undefined,
@@ -26,7 +26,7 @@ describe("regReplace", () => {
     });
   });
 
-  it("accepts multi-line replacement_text with \\n separators", async () => {
+  it("accepts multi-line replacement_lines as an array", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\n", async ({ cwd, path }) => {
       const { ctx, editTool } = setupIntegrationTest(cwd);
       const hashes = await lineHashes("aaa\nbbb\n", home.testPath);
@@ -36,7 +36,7 @@ describe("regReplace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[0]!, remove_to: hashes[0]!,
-          replacement_text: "a\nb",
+          replacement_lines: ["a", "b"],
         },
         undefined,
         undefined,
@@ -58,7 +58,7 @@ describe("regReplace", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB",
+          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -80,7 +80,7 @@ describe("regReplace", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: `${hashes[1]!}│BBB`,
+          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: [`${hashes[1]!}│BBB`],
         },
         undefined,
         undefined,
@@ -103,7 +103,7 @@ describe("regReplace", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: `+${hashes[1]!}│BBB`,
+          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: [`+${hashes[1]!}│BBB`],
         },
         undefined,
         undefined,
@@ -126,7 +126,7 @@ describe("regReplace", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: hashes[2]!, remove_to: hashes[1]!, replacement_text: "X",
+          remove_from: hashes[2]!, remove_to: hashes[1]!, replacement_lines: ["X"],
         },
         undefined,
         undefined,
@@ -150,7 +150,7 @@ describe("regReplace", () => {
         {
           path: "sample.ts",
           remove_from: `${hashes[1]!}│bbb`, remove_to: `${hashes[1]!}│bbb`,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -181,7 +181,7 @@ describe("regReplace — robustness", () => {
           {
             path: "sample.ts",
             remove_from: hashes[1]!, remove_to: hashes[1]!,
-            replacement_text: "BBB",
+            replacement_lines: ["BBB"],
           },
           undefined,
           undefined,
@@ -211,7 +211,7 @@ describe("regReplace — robustness", () => {
           {
             path: "sample.ts",
             remove_from: hashes[1]!, remove_to: hashes[1]!,
-            replacement_text: "bbb",
+            replacement_lines: ["bbb"],
           },
           undefined,
           undefined,
@@ -241,7 +241,7 @@ describe("regReplace — robustness", () => {
           {
             path: "sample.ts",
             remove_from: hashes[1]!, remove_to: hashes[1]!,
-            replacement_text: "BBB",
+            replacement_lines: ["BBB"],
           },
           undefined,
           undefined,
@@ -273,7 +273,7 @@ describe("regReplace — robustness", () => {
             {
               path: "sample.ts",
               remove_from: hashes[1]!, remove_to: hashes[1]!,
-              replacement_text: "BBB",
+              replacement_lines: ["BBB"],
             },
             undefined,
             undefined,

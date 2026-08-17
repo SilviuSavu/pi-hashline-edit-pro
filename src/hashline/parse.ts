@@ -2,7 +2,7 @@ import {
 	ANCHOR_LEN,
 	ALPH_RE,
 } from "./hash";
-import { NEW_CONTENT_NOT_STRING_MSG } from "../constants";
+import { NEW_CONTENT_NOT_ARRAY_MSG } from "../constants";
 
 export type Anchor = { hash: string };
 
@@ -39,12 +39,21 @@ function parseRef(ref: string): Anchor {
 
 export const parseHashRef = parseRef;
 
-export function parseText(edit: string): string[] {
-  if (typeof edit !== "string") {
-    throw new Error(NEW_CONTENT_NOT_STRING_MSG);
+export function parseText(edit: string[], warnings?: string[]): string[] {
+  if (!Array.isArray(edit) || edit.some((line) => typeof line !== "string")) {
+    throw new Error(NEW_CONTENT_NOT_ARRAY_MSG);
   }
-  const normalized = edit.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  if (normalized === "") return [];
-  if (/^\n+$/.test(normalized)) return new Array(normalized.length).fill("");
-  return normalized.split("\n");
+  const out: string[] = [];
+  let split = false;
+  for (const line of edit) {
+    const normalized = line.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    if (normalized !== line) split = true;
+    out.push(...normalized.split("\n"));
+  }
+  if (split) {
+    warnings?.push(
+      "[E_BAD_SHAPE] Autocorrected: split replacement_lines element(s) containing embedded newlines into separate lines.",
+    );
+  }
+  return out;
 }

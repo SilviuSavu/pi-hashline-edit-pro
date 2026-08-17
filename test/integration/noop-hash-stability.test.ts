@@ -26,7 +26,7 @@ describe("noop replace hash stability", () => {
         {
           path: "sample.ts",
           remove_from: hashBefore, remove_to: hashBefore,
-          replacement_text: "bbb",
+          replacement_lines: ["bbb"],
         },
         undefined,
         undefined,
@@ -56,7 +56,7 @@ describe("noop replace hash stability", () => {
           {
             path: "sample.ts",
             remove_from: hashBefore, remove_to: hashBefore,
-            replacement_text: "bbb",
+            replacement_lines: ["bbb"],
           },
           undefined,
           undefined,
@@ -86,7 +86,7 @@ describe("noop replace hash stability", () => {
         {
           path: "sample.ts",
           remove_from: bbbHash, remove_to: bbbHash,
-          replacement_text: "bbb",
+          replacement_lines: ["bbb"],
         },
         undefined,
         undefined,
@@ -99,7 +99,7 @@ describe("noop replace hash stability", () => {
         {
           path: "sample.ts",
           remove_from: dddHash, remove_to: dddHash,
-          replacement_text: "DDD",
+          replacement_lines: ["DDD"],
         },
         undefined,
         undefined,
@@ -129,7 +129,7 @@ describe("noop replace hash stability", () => {
         {
           path: "sample.ts",
           remove_from: hashBefore, remove_to: hashBefore,
-          replacement_text: "bbb",
+          replacement_lines: ["bbb"],
         },
         undefined,
         undefined,
@@ -142,7 +142,7 @@ describe("noop replace hash stability", () => {
         {
           path: "sample.ts",
           remove_from: hashBefore, remove_to: hashBefore,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,

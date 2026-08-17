@@ -35,7 +35,8 @@ export function getPreviewInput(
 	if (
 		typeof normalized.remove_from !== "string" ||
 		typeof normalized.remove_to !== "string" ||
-		typeof normalized.replacement_text !== "string"
+		!Array.isArray(normalized.replacement_lines) ||
+		normalized.replacement_lines.some((line) => typeof line !== "string")
 	) {
 		return null;
 	}
@@ -44,7 +45,7 @@ export function getPreviewInput(
 		path: normalized.path,
 		remove_from: normalized.remove_from,
 		remove_to: normalized.remove_to,
-		replacement_text: normalized.replacement_text,
+		replacement_lines: normalized.replacement_lines,
 	};
 	return request;
 }

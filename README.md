@@ -32,7 +32,7 @@ kQm│}
   "path": "src/main.ts",
   "remove_from": "szJ",
   "remove_to": "szJ",
-  "replacement_text": "  console.log('hi');"
+  "replacement_lines": ["  console.log('hi');"]
 }
 ```
 
@@ -76,14 +76,14 @@ Edge cases:
 
 The built-in `edit` tool is disabled. `replace` is the only edit path, and it takes the hash anchors from `read` output.
 
-One edit per call, with `remove_from`, `remove_to`, and `replacement_text` at the top level:
+One edit per call, with `remove_from`, `remove_to`, and `replacement_lines` at the top level:
 
 ```json
 {
   "path": "src/main.ts",
   "remove_from": "szJ",
   "remove_to": "kQm",
-  "replacement_text": "  console.log('hi');\n}"
+  "replacement_lines": ["  console.log('hi');", "}"]
 }
 ```
 
@@ -91,12 +91,12 @@ One edit per call, with `remove_from`, `remove_to`, and `replacement_text` at th
 | --- | --- |
 | `remove_from` | 3-char hash from `read` output marking the FIRST line to remove (inclusive). |
 | `remove_to` | 3-char hash from `read` output marking the LAST line to remove (inclusive). |
-| `replacement_text` | Replacement text as a single string with `\n` line separators; every `\n` separates lines, so a trailing `\n` adds a final empty line — mirror the removed lines exactly, blank lines included (a replacement that is only blank lines is written as one `\n` per blank line). Use `""` to delete the range. |
+| `replacement_lines` | Replacement lines as an array of strings, one element per line. Mirror the removed lines exactly, blank lines included: use `[]` to delete the range, `[""]` for a single blank line, `["a", ""]` for a line followed by a blank line, and `["", ""]` for two blank lines. Do not embed `\n` inside an element — each element is exactly one line. |
 
 Notes:
 
 - The request is checked before any file I/O, so a bad request never touches the file.
-- Common copy-paste slips are fixed automatically and reported: a leftover `HASH│` prefix in `replacement_text` or `remove_from`/`remove_to`, diff-preview rows pasted into the replacement, a reversed range, or a boundary line pasted twice. New lines that re-include a block adjacent to the range are stripped automatically when that block is unique in the file — the whole run is stripped as one unit (including repeated structural lines like `}`), so re-including an unchanged block next to the range never duplicates it. A missing `path` is resolved from the anchors when they uniquely identify a file in the hash store (reported as a warning); when the anchors match multiple known files the request is rejected with the candidate paths named. `file_path` works as an alias for `path` in all three tools.
+- Common copy-paste slips are fixed automatically and reported: a leftover `HASH│` prefix in `replacement_lines` or `remove_from`/`remove_to`, diff-preview rows pasted into the replacement, a reversed range, or a boundary line pasted twice. New lines that re-include a block adjacent to the range are stripped automatically when that block is unique in the file — the whole run is stripped as one unit (including repeated structural lines like `}`), so re-including an unchanged block next to the range never duplicates it. A missing `path` is resolved from the anchors when they uniquely identify a file in the hash store (reported as a warning); when the anchors match multiple known files the request is rejected with the candidate paths named. `file_path` works as an alias for `path` in all three tools.
 - An edit that produces identical content reports `No changes made` and leaves the anchors alone.
 - Every line in the removed range must match what was last shown to you. The extension records the `HASH│content` rows it serves — `read` output, the auto-read block after `write`, the `+HASH│`/` HASH│` rows of post-edit diffs (replace and undo), the current-range rows of `[E_RANGE_STALE]` feedback, and the context rows of stale/ambiguous-anchor feedback — and verifies the whole range against that record before writing. If an interior line changed on disk since it was shown (external editor, formatter-on-save, code generation) or was never shown, the edit is refused with `[E_RANGE_STALE]` and the current range is returned with fresh anchors, so the retry needs no `read`. Edits outside the served record are only possible for files that were never read (for example right after a `write` with auto-read disabled); once the file has been served, every replaced line must have been shown.
 - After a successful edit you get the post-edit diff with fresh anchors, so you can keep editing without re-reading.
@@ -157,12 +157,12 @@ A no-op replace never changes the file, so anchors remain valid. On first run af
 
 | Code | Meaning |
 | --- | --- |
-| `[E_BAD_SHAPE]` | Request envelope or edit item has unknown, missing, or wrongly-typed fields (for example `replacement_text` must be a string with `\n` line separators). |
+| `[E_BAD_SHAPE]` | Request envelope or edit item has unknown, missing, or wrongly-typed fields (for example `replacement_lines` must be an array of strings, one element per line). |
 | `[E_BAD_REF]` | An anchor in `remove_from`/`remove_to` is not a bare 3-char hash. |
 | `[E_STALE_ANCHOR]` | An anchor does not match any line in the current file; call `read` for fresh anchors. |
 | `[E_AMBIGUOUS_ANCHOR]` | An anchor matches multiple lines; call `read` for fresh anchors. |
-| `[E_INVALID_PATCH]` | A `replacement_text` line is a diff-preview row (`+HASH│`, `-HASH│`, `-   │`). The marker is stripped automatically with a warning. |
-| `[E_BARE_HASH_PREFIX]` | A `replacement_text` line starts with a hash-like `HASH│` prefix. The prefix is stripped automatically with a warning. |
+| `[E_INVALID_PATCH]` | A `replacement_lines` element is a diff-preview row (`+HASH│`, `-HASH│`, `-   │`). The marker is stripped automatically with a warning. |
+| `[E_BARE_HASH_PREFIX]` | A `replacement_lines` element starts with a hash-like `HASH│` prefix. The prefix is stripped automatically with a warning. |
 | `[E_BAD_OP]` | Range start line is after range end line. The pair is swapped automatically with a warning. |
 | `[E_WOULD_EMPTY]` | An edit would empty a non-empty file; use `write` instead. |
 | `[E_NOT_FOUND]` | The path does not exist. |

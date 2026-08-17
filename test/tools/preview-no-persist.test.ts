@@ -28,7 +28,7 @@ describe("compPreview no-persist guarantee", () => {
         {
           path: "sample.txt",
           remove_from: bHash, remove_to: cHash,
-          replacement_text: "B",
+          replacement_lines: ["B"],
         },
         cwd,
       );
@@ -54,7 +54,7 @@ describe("compPreview no-persist guarantee", () => {
         {
           path: "sample.txt",
           remove_from: hashes[1]!, remove_to: hashes[2]!,
-          replacement_text: "X\nY",
+          replacement_lines: ["X", "Y"],
         },
         cwd,
       );
@@ -77,7 +77,7 @@ describe("compPreview no-persist guarantee", () => {
         {
           path: "sample.txt",
           remove_from: hashes[0]!, remove_to: hashes[2]!,
-          replacement_text: "x",
+          replacement_lines: ["x"],
         },
         cwd,
       );
@@ -103,7 +103,7 @@ describe("compPreview no-persist guarantee", () => {
         {
           path: "sample.txt",
           remove_from: hashes[0]!, remove_to: hashes[1]!,
-          replacement_text: "X",
+          replacement_lines: ["X"],
         },
         cwd,
       );

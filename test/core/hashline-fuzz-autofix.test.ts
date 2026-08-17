@@ -51,14 +51,6 @@ function randContent(rnd: () => number): string {
   const content = lines.join("\n");
   return rnd() < 0.5 ? content + "\n" : content;
 }
-
-function replToContent(repl: string[]): string {
-  if (repl.length > 0 && repl.every((line) => line === "")) {
-    return "\n".repeat(repl.length);
-  }
-  return repl.join("\n");
-}
-
 function randRepl(rnd: () => number, lines: string[], s: number, e: number): string[] {
   const n = lines.length;
   const prev = s >= 2 ? lines[s - 2] : undefined;
@@ -189,7 +181,7 @@ async function runStep(
   const edit = resEdit({
     remove_from: hashes[s - 1]!,
     remove_to: hashes[e - 1]!,
-    replacement_text: replToContent(repl),
+    replacement_lines: repl,
   });
   let result;
   try {

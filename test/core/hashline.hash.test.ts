@@ -22,9 +22,9 @@ describe("strict hashline contract", () => {
 		expect(hashes[0]).toBe(hashes2[0]);
 	});
 
-	it("preserves explicit blank trailing line in string input", () => {
-		expect(parseText("alpha\n")).toEqual(["alpha", ""]);
-		expect(parseText("alpha\n\n")).toEqual(["alpha", "", ""]);
+	it("preserves explicit blank trailing line in array input", () => {
+		expect(parseText(["alpha", ""])).toEqual(["alpha", ""]);
+		expect(parseText(["alpha", "", ""])).toEqual(["alpha", "", ""]);
 	});
 
 	it("rejects stale anchors instead of relocating by hash", () => {

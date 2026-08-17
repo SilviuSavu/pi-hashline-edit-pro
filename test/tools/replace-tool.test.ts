@@ -6,14 +6,14 @@ import { makeFakePiRegistry, withTempFile, useTestHome } from "../support/fixtur
 const home = useTestHome();
 
 describe("editToolSchema", () => {
-  it("has path, remove_from, remove_to, and replacement_text at top level", () => {
+  it("has path, remove_from, remove_to, and replacement_lines at top level", () => {
     const schema = editToolSchema as any;
     expect(schema.type).toBe("object");
     const props = schema.properties;
     expect(props.path).toBeDefined();
     expect(props.remove_from).toBeDefined();
     expect(props.remove_to).toBeDefined();
-    expect(props.replacement_text).toBeDefined();
+    expect(props.replacement_lines).toBeDefined();
     expect(props.changes).toBeUndefined();
     expect(schema.additionalProperties).toBe(false);
   });
@@ -36,7 +36,7 @@ describe("regReplace", () => {
     const result = tool.prepareArguments({
       file_path: "test.txt",
       remove_from: "AAA", remove_to: "BBB",
-      replacement_text: "new",
+      replacement_lines: ["new"],
     });
     expect(result.path).toBe("test.txt");
     expect(result.file_path).toBeUndefined();
@@ -56,7 +56,7 @@ describe("regReplace", () => {
         {
           path: "sample.txt",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -80,7 +80,7 @@ describe("regReplace", () => {
         {
           path: "sample.txt",
           remove_from: hashes[1]!, remove_to: hashes[2]!,
-          replacement_text: "BBB\nCCC",
+          replacement_lines: ["BBB", "CCC"],
         },
         undefined,
         undefined,
@@ -104,7 +104,7 @@ describe("regReplace", () => {
         {
           path: "sample.txt",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "",
+          replacement_lines: [],
         },
         undefined,
         undefined,
@@ -128,7 +128,7 @@ describe("regReplace", () => {
         {
           path: "sample.txt",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "bbb",
+          replacement_lines: ["bbb"],
         },
         undefined,
         undefined,
@@ -152,7 +152,7 @@ describe("regReplace", () => {
           {
             path: "sample.txt",
             remove_from: "ZZZ", remove_to: "ZZZ",
-            replacement_text: "x",
+            replacement_lines: ["x"],
           },
           undefined,
           undefined,
@@ -175,7 +175,7 @@ describe("regReplace", () => {
           {
             path: "sample.txt",
             remove_from: hashes[0]!, remove_to: hashes[1]!,
-            replacement_text: "",
+            replacement_lines: [],
           },
           undefined,
           undefined,
@@ -198,7 +198,7 @@ describe("regReplace", () => {
           {
             path: "sample.txt",
             remove_from: hashes[1]!, remove_to: hashes[1]!,
-            replacement_text: "BBB",
+            replacement_lines: ["BBB"],
             unknown_field: "bad",
           } as any,
           undefined,
@@ -221,7 +221,7 @@ describe("regReplace", () => {
         {
           path: "sample.txt",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -245,7 +245,7 @@ describe("regReplace", () => {
         {
           path: "crlf.txt",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BETA",
+          replacement_lines: ["BETA"],
         },
         undefined,
         undefined,

@@ -64,59 +64,68 @@ describe("parseHashRef", () => {
 
 describe("parseText", () => {
 	it("rejects null with a clear error", () => {
-		expect(() => parseText(null as unknown as string)).toThrow(/^\[E_BAD_SHAPE\].*must be a string with \\n line separators/);
+		expect(() => parseText(null as unknown as string[])).toThrow(/^\[E_BAD_SHAPE\].*must be an array of strings/);
 	});
 
-	it("rejects array input with clear error (must use string)", () => {
-		expect(() => parseText(["a", "b"] as unknown as string)).toThrow(
-			/must be a string with \\n line separators, not an array/,
+	it("rejects a single string input with clear error (must use array)", () => {
+		expect(() => parseText("a\nb" as unknown as string[])).toThrow(
+			/must be an array of strings.*not a single string/,
 		);
 	});
 
-	it("splits a string on \\n separators", () => {
-		expect(parseText("a\nb")).toEqual(["a", "b"]);
+	it("passes an array through as lines", () => {
+		expect(parseText(["a", "b"])).toEqual(["a", "b"]);
 	});
 
-	it("returns [] for empty string (delete range)", () => {
-		expect(parseText("")).toEqual([]);
+	it("returns [] for empty array (delete range)", () => {
+		expect(parseText([])).toEqual([]);
 	});
 
-	it("treats a trailing newline as an extra empty line (no special case)", () => {
-		expect(parseText("a\nb\n")).toEqual(["a", "b", ""]);
+	it("treats a trailing empty element as an extra blank line", () => {
+		expect(parseText(["a", "b", ""])).toEqual(["a", "b", ""]);
 	});
 
-	it("represents a single newline as one blank line", () => {
-		expect(parseText("\n")).toEqual([""]);
+	it("represents [\"\"] as one blank line", () => {
+		expect(parseText([""])).toEqual([""]);
 	});
 
-	it("represents two newlines as two blank lines", () => {
-		expect(parseText("\n\n")).toEqual(["", ""]);
+	it("represents [\"\", \"\"] as two blank lines", () => {
+		expect(parseText(["", ""])).toEqual(["", ""]);
 	});
 
-	it("normalizes CRLF and CR line endings to LF", () => {
-		expect(parseText("a\r\nb\rc")).toEqual(["a", "b", "c"]);
+	it("splits elements containing embedded newlines and reports a warning", () => {
+		const warnings: string[] = [];
+		expect(parseText(["a\r\nb\rc"], warnings)).toEqual(["a", "b", "c"]);
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toMatch(/split replacement_lines element/);
+	});
+
+	it("does not warn when no element contains embedded newlines", () => {
+		const warnings: string[] = [];
+		parseText(["a", "b"], warnings);
+		expect(warnings).toHaveLength(0);
 	});
 
 	it("preserves '# keep me' comment lines (no autocorrection)", () => {
-		expect(parseText("# keep me")).toEqual(["# keep me"]);
+		expect(parseText(["# keep me"])).toEqual(["# keep me"]);
 	});
 
 	it("preserves literal '+' prefixed content (no autocorrection)", () => {
-		expect(parseText("+added")).toEqual(["+added"]);
+		expect(parseText(["+added"])).toEqual(["+added"]);
 	});
 
 	it("passes through diff-preview rows verbatim (marker stripping happens in applyEdit)", () => {
-		expect(parseText("+aB3│foo\n+xYp│bar")).toEqual(["+aB3│foo", "+xYp│bar"]);
-		expect(parseText(" aB3│keep\n-10    old\n xYp│after")).toEqual([" aB3│keep", "-10    old", " xYp│after"]);
-		expect(parseText(" aB3│keep\n-   │old\n xYp│after")).toEqual([" aB3│keep", "-   │old", " xYp│after"]);
-		expect(parseText("-aB3│old\n- aB3│old")).toEqual(["-aB3│old", "- aB3│old"]);
+		expect(parseText(["+aB3│foo", "+xYp│bar"])).toEqual(["+aB3│foo", "+xYp│bar"]);
+		expect(parseText([" aB3│keep", "-10    old", " xYp│after"])).toEqual([" aB3│keep", "-10    old", " xYp│after"]);
+		expect(parseText([" aB3│keep", "-   │old", " xYp│after"])).toEqual([" aB3│keep", "-   │old", " xYp│after"]);
+		expect(parseText(["-aB3│old", "- aB3│old"])).toEqual(["-aB3│old", "- aB3│old"]);
 	});
 
 	it("passes through numbered deletion rows as literal content", () => {
-		expect(parseText("-10    old")).toEqual(["-10    old"]);
+		expect(parseText(["-10    old"])).toEqual(["-10    old"]);
 	});
 
 	it("accepts literal minus-prefixed content that is not a diff row", () => {
-		expect(parseText("-   something\n-abc\n- old style")).toEqual(["-   something", "-abc", "- old style"]);
+		expect(parseText(["-   something", "-abc", "- old style"])).toEqual(["-   something", "-abc", "- old style"]);
 	});
 });

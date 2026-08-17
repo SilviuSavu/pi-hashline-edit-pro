@@ -1,7 +1,7 @@
 import { abortIf, rejectUnknownFields, firstNonEmptyIndex, lastNonEmptyIndex, clipLine } from "../utils";
 import { HASH_CLASS, HASH_SEP, HL_BARE_PREFIX_RE, HL_PREFIX_PLUS_RE, HL_PREFIX_MINUS_RE, canon } from "./hash";
 import { parseHashRef, parseText, type Anchor } from "./parse";
-import { NEW_CONTENT_NOT_STRING_MSG, MAX_RANGE_STALE_LINES } from "../constants";
+import { NEW_CONTENT_NOT_ARRAY_MSG, MAX_RANGE_STALE_LINES } from "../constants";
 
 export type RAnchor = {
 	line: number;
@@ -39,7 +39,7 @@ export interface NEdit {
 }
 
 export type HTEdit = {
-  replacement_text: string;
+  replacement_lines: string[];
   remove_from: string;
   remove_to: string;
 };
@@ -134,10 +134,10 @@ export function fmtMismatchWithHashes(
 }
 
 
-const ITEM_KS = new Set(["replacement_text", "remove_from", "remove_to"]);
+const ITEM_KS = new Set(["replacement_lines", "remove_from", "remove_to"]);
 
 function assertItem(edit: Record<string, unknown>): void {
-  rejectUnknownFields(edit, ITEM_KS, "Edit", "The edit takes only { replacement_text, remove_from, remove_to }.");
+  rejectUnknownFields(edit, ITEM_KS, "Edit", "The edit takes only { replacement_lines, remove_from, remove_to }.");
 
   if ("remove_from" in edit && typeof edit.remove_from !== "string") {
     throw new Error(
@@ -149,11 +149,11 @@ function assertItem(edit: Record<string, unknown>): void {
       `[E_BAD_SHAPE] Field "remove_to" must be an anchor string (3-char hash).`,
     );
   }
-  if (!("replacement_text" in edit)) {
-    throw new Error(`[E_BAD_SHAPE] The edit requires a "replacement_text" field. Provide the replacement text (use "" to delete).`);
+  if (!("replacement_lines" in edit)) {
+    throw new Error(`[E_BAD_SHAPE] The edit requires a "replacement_lines" field. Provide the replacement lines as an array of strings (use [] to delete).`);
   }
-  if (typeof edit.replacement_text !== "string") {
-    throw new Error(NEW_CONTENT_NOT_STRING_MSG);
+  if (!Array.isArray(edit.replacement_lines) || edit.replacement_lines.some((line) => typeof line !== "string")) {
+    throw new Error(NEW_CONTENT_NOT_ARRAY_MSG);
   }
   if (typeof edit.remove_from !== "string" || typeof edit.remove_to !== "string") {
     throw new Error(
@@ -167,7 +167,7 @@ const ANCHOR_ROW_RE = new RegExp(`^([+-]?)(${HASH_CLASS})│`);
 export function resEdit(edit: HTEdit, warnings?: string[]): HEdit {
   assertItem(edit as Record<string, unknown>);
 
-  const replaceLines = parseText(edit.replacement_text);
+  const replaceLines = parseText(edit.replacement_lines, warnings);
   const bounds = [edit.remove_from, edit.remove_to].map((ref) => {
     const trimmed = ref.trim();
     const match = trimmed.match(ANCHOR_ROW_RE);
@@ -217,7 +217,7 @@ export function stripBarePrefixes(
 	});
 	if (stripped.length === 0) return edit;
 	const locations = stripped
-		.map((s) => `replacement_text line ${s.lineIndex + 1}`)
+		.map((s) => `replacement_lines line ${s.lineIndex + 1}`)
 		.join(", ");
 	const matchedCount = stripped.filter((s) => s.matched).length;
 	const evidence =
@@ -253,7 +253,7 @@ export function stripDiffPrefixes(
 		return line;
 	});
 	if (stripped.length === 0) return edit;
-	const locations = stripped.map((i) => `replacement_text line ${i + 1}`).join(", ");
+	const locations = stripped.map((i) => `replacement_lines line ${i + 1}`).join(", ");
 	warnings.push(
 		`[E_INVALID_PATCH] Autocorrected: stripped diff-preview marker copied from the diff preview in ${locations}.`
 	);

@@ -7,14 +7,14 @@ import {
 
 describe("resEdit", () => {
 	it("resolves replace with remove_from/remove_to", () => {
-		const edit: HTEdit = { remove_from: "ZZP", remove_to: "PPW", replacement_text: "a\nb" };
+		const edit: HTEdit = { remove_from: "ZZP", remove_to: "PPW", replacement_lines: ["a", "b"] };
 		const resolved = resEdit(edit);
 		expect(resolved).toHaveProperty("hash_bounds");
 		expect(resolved).toHaveProperty("content_lines");
 	});
 
 	it("resolves a 1-line replace (same anchor)", () => {
-		const edit: HTEdit = { remove_from: "MQX", remove_to: "MQX", replacement_text: "new" };
+		const edit: HTEdit = { remove_from: "MQX", remove_to: "MQX", replacement_lines: ["new"] };
 		const resolved = resEdit(edit);
 		const r = resolved as {
 			hash_bounds: [Anchor, Anchor];
@@ -25,69 +25,69 @@ describe("resEdit", () => {
 	});
 
 	it("throws on replace with no remove_from/remove_to (E_BAD_SHAPE)", () => {
-    const edit = { replacement_text: "new" } as any;
+    const edit = { replacement_lines: ["new"] } as any;
 		expect(() => resEdit(edit)).toThrow(/^\[E_BAD_SHAPE\]/);
 	});
 
 	it("throws on malformed remove_from/remove_to", () => {
-		const edit: HTEdit = { remove_from: "not-valid", remove_to: "not-valid", replacement_text: "x" };
+		const edit: HTEdit = { remove_from: "not-valid", remove_to: "not-valid", replacement_lines: ["x"] };
 		expect(() => resEdit(edit)).toThrow(/Invalid anchor/);
 	});
 
-  it("rejects array replacement_text input", () => {
+  it("rejects a single string replacement_lines input", () => {
     const edit = {
       remove_from: "ZZP", remove_to: "ZZP",
-      replacement_text: ["hello", "world"],
+      replacement_lines: "hello",
     } as unknown as HTEdit;
     expect(() => resEdit(edit)).toThrow(
-      /must be a string with \\n line separators, not an array/i,
+      /must be an array of strings.*not a single string/i,
     );
   });
 
-  it("splits string replacement_text on line separators", () => {
+  it("passes replacement_lines through as content lines", () => {
     const edit = {
       remove_from: "ZZP", remove_to: "ZZP",
-      replacement_text: "line1\nline2\n",
+      replacement_lines: ["line1", "line2", ""],
     } as unknown as HTEdit;
     const resolved = resEdit(edit);
     expect(resolved.content_lines).toEqual(["line1", "line2", ""]);
   });
 
-  it("normalizes CRLF in replacement_text", () => {
+  it("splits elements with embedded newlines in replacement_lines", () => {
     const edit = {
       remove_from: "ZZP", remove_to: "ZZP",
-      replacement_text: "a\r\nb",
+      replacement_lines: ["a\r\nb", "c"],
     } as unknown as HTEdit;
     const resolved = resEdit(edit);
-    expect(resolved.content_lines).toEqual(["a", "b"]);
+    expect(resolved.content_lines).toEqual(["a", "b", "c"]);
   });
 
-	it("rejects null replacement_text input", () => {
+	it("rejects null replacement_lines input", () => {
 		const edit = {
 			remove_from: "ZZP", remove_to: "ZZP",
-      replacement_text: null,
+      replacement_lines: null,
 		} as unknown as HTEdit;
 		expect(() => resEdit(edit)).toThrow(
-      /must be a string with \\n line separators, not an array/i,
+      /must be an array of strings.*not a single string/i,
 		);
 	});
 
 	it("rejects unknown fields", () => {
-    const edit = { remove_from: "ZZP", remove_to: "ZZP", replacement_text: "x", extra: true } as any;
+    const edit = { remove_from: "ZZP", remove_to: "ZZP", replacement_lines: ["x"], extra: true } as any;
 		expect(() => resEdit(edit)).toThrow(
 			/unknown or unsupported fields/i,
 		);
 	});
 
-	it("rejects missing replacement_text", () => {
+	it("rejects missing replacement_lines", () => {
 		const edit = { remove_from: "ZZP", remove_to: "ZZP" } as any;
 		expect(() => resEdit(edit)).toThrow(
-      /requires a "replacement_text" field/i,
+      /requires a "replacement_lines" field/i,
 		);
 	});
 
 	it("strips a HASH│content row pasted into remove_from/remove_to with a warning", () => {
-		const edit: HTEdit = { remove_from: "MQX│const x = 1;", remove_to: "MQX│const x = 1;", replacement_text: "new" };
+		const edit: HTEdit = { remove_from: "MQX│const x = 1;", remove_to: "MQX│const x = 1;", replacement_lines: ["new"] };
 		const warnings: string[] = [];
 		const resolved = resEdit(edit, warnings);
 		expect(resolved.hash_bounds[0].hash).toBe("MQX");
@@ -99,7 +99,7 @@ describe("resEdit", () => {
 	});
 
 	it("strips diff-preview rows pasted into remove_from/remove_to with a warning", () => {
-		const edit: HTEdit = { remove_from: "+MQX│const x = 1;", remove_to: "-MQX│const x = 1;", replacement_text: "new" };
+		const edit: HTEdit = { remove_from: "+MQX│const x = 1;", remove_to: "-MQX│const x = 1;", replacement_lines: ["new"] };
 		const warnings: string[] = [];
 		const resolved = resEdit(edit, warnings);
 		expect(resolved.hash_bounds[0].hash).toBe("MQX");
@@ -111,7 +111,7 @@ describe("resEdit", () => {
 	});
 
 	it("leaves bare anchors untouched and emits no warning", () => {
-		const edit: HTEdit = { remove_from: "MQX", remove_to: "MQX", replacement_text: "new" };
+		const edit: HTEdit = { remove_from: "MQX", remove_to: "MQX", replacement_lines: ["new"] };
 		const warnings: string[] = [];
 		const resolved = resEdit(edit, warnings);
 		expect(resolved.hash_bounds[0].hash).toBe("MQX");
@@ -119,7 +119,7 @@ describe("resEdit", () => {
 	});
 
 	it("still rejects rows without a leading hash", () => {
-		const edit: HTEdit = { remove_from: "│const x = 1;", remove_to: "MQX", replacement_text: "new" };
+		const edit: HTEdit = { remove_from: "│const x = 1;", remove_to: "MQX", replacement_lines: ["new"] };
 		expect(() => resEdit(edit)).toThrow(/^\[E_BAD_REF\]/);
 	});
 });

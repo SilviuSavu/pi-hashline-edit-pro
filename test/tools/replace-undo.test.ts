@@ -47,7 +47,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -82,7 +82,7 @@ describe("undo_last_replace", () => {
 
       await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB" },
+        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"] },
         undefined,
         undefined,
         ctx,
@@ -112,7 +112,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -143,7 +143,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -178,7 +178,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB\nB2",
+          replacement_lines: ["BBB", "B2"],
         },
         undefined,
         undefined,
@@ -211,7 +211,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "",
+          replacement_lines: [],
         },
         undefined,
         undefined,
@@ -244,7 +244,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[2]!,
-          replacement_text: `XXX\nYYY\nZZZ`,
+          replacement_lines: [`XXX`, `YYY`, `ZZZ`],
         },
         undefined,
         undefined,
@@ -277,7 +277,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -311,7 +311,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -352,7 +352,7 @@ describe("undo_last_replace", () => {
             {
               path: "sample.ts",
               remove_from: hashes[1]!, remove_to: hashes[1]!,
-              replacement_text: "BBB",
+              replacement_lines: ["BBB"],
             },
             undefined,
             undefined,
@@ -371,7 +371,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -392,7 +392,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -410,7 +410,7 @@ describe("undo_last_replace", () => {
             {
               path: "sample.ts",
               remove_from: hashes[2]!, remove_to: hashes[2]!,
-              replacement_text: "CCC",
+              replacement_lines: ["CCC"],
             },
             undefined,
             undefined,
@@ -446,7 +446,7 @@ describe("undo_last_replace", () => {
             {
               path: "sample.ts",
               remove_from: hashes[1]!, remove_to: hashes[1]!,
-              replacement_text: "BBB",
+              replacement_lines: ["BBB"],
             },
             undefined,
             undefined,
@@ -474,7 +474,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -498,7 +498,7 @@ describe("undo_last_replace", () => {
             {
               path: "sample.ts",
               remove_from: hashes[2]!, remove_to: hashes[2]!,
-              replacement_text: "CCC",
+              replacement_lines: ["CCC"],
             },
             controller.signal,
             undefined,
@@ -529,7 +529,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -569,7 +569,7 @@ describe("undo_last_replace", () => {
         {
           path: "sample.ts",
           remove_from: hashes[0]!, remove_to: hashes[0]!,
-          replacement_text: "LINE1",
+          replacement_lines: ["LINE1"],
         },
         undefined,
         undefined,
@@ -602,7 +602,7 @@ describe("undo_last_replace", () => {
 
       await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB" },
+        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"] },
         undefined, undefined, ctx,
       );
 
@@ -631,7 +631,7 @@ describe("undo_last_replace", () => {
 
       await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB" },
+        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"] },
         undefined, undefined, ctx,
       );
 
@@ -655,7 +655,7 @@ describe("undo_last_replace", () => {
 
       await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB" },
+        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"] },
         undefined, undefined, ctx,
       );
 
@@ -679,7 +679,7 @@ describe("undo_last_replace", () => {
 
       await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB" },
+        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"] },
         undefined, undefined, ctx,
       );
 
@@ -727,7 +727,7 @@ describe("undo cleared after write", () => {
 
       await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB" },
+        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"] },
         undefined, undefined, { cwd } as any,
       );
 
@@ -753,7 +753,7 @@ describe("undo cleared after write", () => {
 
       await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB" },
+        { path: "sample.ts", remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"] },
         undefined, undefined, { cwd } as any,
       );
 

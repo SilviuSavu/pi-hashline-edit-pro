@@ -13,21 +13,21 @@ describe("normReq", () => {
 		const input = {
 			path: "src/main.ts",
 			remove_from: "aB3", remove_to: "aB3",
-			replacement_text: "new",
+			replacement_lines: ["new"],
 		};
 		const result = normReq(input);
 		expect(result).toEqual(input);
 	});
 
 	it("normalizes file_path to path", () => {
-		const input = { file_path: "test.txt", remove_from: "AAA", remove_to: "BBB", replacement_text: "new" };
+		const input = { file_path: "test.txt", remove_from: "AAA", remove_to: "BBB", replacement_lines: ["new"] };
 		const result = normReq(input) as Record<string, unknown>;
 		expect(result.path).toBe("test.txt");
 		expect(result.file_path).toBeUndefined();
 	});
 
 	it("does not overwrite existing path with file_path", () => {
-		const input = { path: "original.txt", file_path: "alias.txt", remove_from: "AAA", remove_to: "BBB", replacement_text: "new" };
+		const input = { path: "original.txt", file_path: "alias.txt", remove_from: "AAA", remove_to: "BBB", replacement_lines: ["new"] };
 		const result = normReq(input) as Record<string, unknown>;
 		expect(result.path).toBe("original.txt");
 	});
@@ -43,7 +43,7 @@ describe("normReq", () => {
 	});
 
 	it("preserves other fields", () => {
-		const input = { path: "test.txt", remove_from: "AAA", remove_to: "BBB", replacement_text: "new", custom: "value" };
+		const input = { path: "test.txt", remove_from: "AAA", remove_to: "BBB", replacement_lines: ["new"], custom: "value" };
 		const result = normReq(input) as Record<string, unknown>;
 		expect(result.custom).toBe("value");
 	});
@@ -52,34 +52,34 @@ describe("normReq", () => {
 		const input = {
 			file_path: "src/main.ts",
 			remove_from: "AAA", remove_to: "BBB",
-			replacement_text: "x",
+			replacement_lines: ["x"],
 		};
 		const originalFilePath = input.file_path;
-		const originalNewContent = input.replacement_text;
+		const originalNewContent = input.replacement_lines;
 		normReq(input);
 		expect(input.file_path).toBe(originalFilePath);
-		expect(input.replacement_text).toBe(originalNewContent);
+		expect(input.replacement_lines).toBe(originalNewContent);
 	});
 });
 
 describe("normReq — top-level shape", () => {
-	it("keeps remove_from/remove_to and replacement_text at top level", () => {
+	it("keeps remove_from/remove_to and replacement_lines at top level", () => {
 		const input = {
 			path: "test.txt",
 			remove_from: "AAA", remove_to: "BBB",
-			replacement_text: "new line",
+			replacement_lines: ["new line"],
 		};
 		const result = normReq(input) as Record<string, unknown>;
 		expect(result.remove_from).toEqual("AAA");
 		expect(result.remove_to).toEqual("BBB");
-		expect(result.replacement_text).toEqual("new line");
+		expect(result.replacement_lines).toEqual(["new line"]);
 	});
 
 	it("handles flat format with file_path alias", () => {
 		const input = {
 			file_path: "src/main.ts",
 			remove_from: "AAA", remove_to: "BBB",
-			replacement_text: "new",
+			replacement_lines: ["new"],
 		};
 		const result = normReq(input) as Record<string, unknown>;
 		expect(result.path).toBe("src/main.ts");
@@ -91,14 +91,14 @@ describe("normReq — top-level shape", () => {
 		const input = {
 			path: "test.txt",
 			remove_from: "AAA", remove_to: "BBB",
-			replacement_text: "new",
+			replacement_lines: ["new"],
 		};
 		const origFrom = input.remove_from;
 		const origTo = input.remove_to;
-		const origNc = input.replacement_text;
+		const origNc = input.replacement_lines;
 		normReq(input);
 		expect(input.remove_from).toBe(origFrom);
 		expect(input.remove_to).toBe(origTo);
-		expect(input.replacement_text).toBe(origNc);
+		expect(input.replacement_lines).toBe(origNc);
 	});
 });

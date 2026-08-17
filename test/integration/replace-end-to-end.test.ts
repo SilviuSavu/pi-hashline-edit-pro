@@ -19,7 +19,7 @@ describe("replace tool — end-to-end", () => {
         {
           path: "sample.ts",
           remove_from: betaHash, remove_to: betaHash,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -48,7 +48,7 @@ describe("replace tool — end-to-end", () => {
         {
           path: "sample.ts",
           remove_from: bHash, remove_to: cHash,
-          replacement_text: "B\nC",
+          replacement_lines: ["B", "C"],
         },
         undefined,
         undefined,
@@ -77,7 +77,7 @@ describe("replace tool — end-to-end", () => {
         {
           path: "sample.ts",
           remove_from: bHash, remove_to: cHash,
-          replacement_text: "",
+          replacement_lines: [],
         },
         undefined,
         undefined,
@@ -108,7 +108,7 @@ describe("replace tool — end-to-end", () => {
         {
           path: "sample.ts",
           remove_from: betaRef, remove_to: betaRef,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -121,7 +121,7 @@ describe("replace tool — end-to-end", () => {
           {
             path: "sample.ts",
             remove_from: betaRef, remove_to: betaRef,
-            replacement_text: "BBB-AGAIN",
+            replacement_lines: ["BBB-AGAIN"],
           },
           undefined,
           undefined,
@@ -144,7 +144,7 @@ describe("replace tool — end-to-end", () => {
         {
           path: "empty.ts",
           remove_from: emptyHash, remove_to: emptyHash,
-          replacement_text: "first\nsecond",
+          replacement_lines: ["first", "second"],
         },
         undefined,
         undefined,
@@ -171,7 +171,7 @@ describe("replace tool — end-to-end", () => {
         {
           path: "crlf.ts",
           remove_from: betaRef, remove_to: betaRef,
-          replacement_text: "BETA",
+          replacement_lines: ["BETA"],
         },
         undefined,
         undefined,
@@ -199,7 +199,7 @@ describe("replace tool — end-to-end", () => {
         {
           path: "cr.ts",
           remove_from: betaRef, remove_to: betaRef,
-          replacement_text: "BETA",
+          replacement_lines: ["BETA"],
         },
         undefined,
         undefined,
@@ -244,7 +244,7 @@ describe("replace tool — end-to-end", () => {
             .split("│")[0]!;
           await editTool.execute(
             "e1",
-            { path: c.fileName, remove_from: betaRef, remove_to: betaRef, replacement_text: "" },
+            { path: c.fileName, remove_from: betaRef, remove_to: betaRef, replacement_lines: [] },
             undefined,
             undefined,
             ctx,
@@ -264,7 +264,7 @@ describe("replace tool — end-to-end", () => {
             .split("│")[0]!;
           await editTool.execute(
             "e1",
-            { path: c.fileName, remove_from: betaRef, remove_to: betaRef, replacement_text: "beta" },
+            { path: c.fileName, remove_from: betaRef, remove_to: betaRef, replacement_lines: ["beta"] },
             undefined,
             undefined,
             ctx,
@@ -275,7 +275,7 @@ describe("replace tool — end-to-end", () => {
       });
     }
   });
-  it("accepts top-level remove_from/remove_to and replacement_text", async () => {
+  it("accepts top-level remove_from/remove_to and replacement_lines", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd, path }) => {
       const { ctx, editTool } = setupIntegrationTest(cwd);
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
@@ -285,7 +285,7 @@ describe("replace tool — end-to-end", () => {
         {
           path: "sample.ts",
           remove_from: hashes[1]!, remove_to: hashes[1]!,
-          replacement_text: "BBB",
+          replacement_lines: ["BBB"],
         },
         undefined,
         undefined,

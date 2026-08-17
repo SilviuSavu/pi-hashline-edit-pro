@@ -20,7 +20,7 @@ describe("snapshotId surface (details-only after W2)", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: betaRef, remove_to: betaRef, replacement_text: "BETA",
+          remove_from: betaRef, remove_to: betaRef, replacement_lines: ["BETA"],
         },
         undefined,
         undefined,
@@ -53,7 +53,7 @@ describe("snapshotId surface (details-only after W2)", () => {
           "e1",
           {
             path: "sample.ts",
-            remove_from: alphaRef, remove_to: gammaRef, replacement_text: "alpha\nx\ngamma",
+            remove_from: alphaRef, remove_to: gammaRef, replacement_lines: ["alpha", "x", "gamma"],
           },
           undefined,
           undefined,
@@ -79,7 +79,7 @@ describe("snapshotId surface (details-only after W2)", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: betaRef, remove_to: betaRef, replacement_text: "BETA",
+          remove_from: betaRef, remove_to: betaRef, replacement_lines: ["BETA"],
         },
         undefined,
         undefined,
@@ -104,7 +104,7 @@ describe("snapshotId surface (details-only after W2)", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: betaRef, remove_to: betaRef, replacement_text: "BETA",
+          remove_from: betaRef, remove_to: betaRef, replacement_lines: ["BETA"],
         },
         undefined,
         undefined,
@@ -116,7 +116,7 @@ describe("snapshotId surface (details-only after W2)", () => {
           "e2",
           {
             path: "sample.ts",
-            remove_from: betaRef, remove_to: betaRef, replacement_text: "BETA-AGAIN",
+            remove_from: betaRef, remove_to: betaRef, replacement_lines: ["BETA-AGAIN"],
           },
           undefined,
           undefined,

@@ -20,7 +20,7 @@ describe("boundary duplication auto-fix", () => {
         {
           path: "sample.ts",
           remove_from: line2Hash, remove_to: line3Hash,
-          replacement_text: `  const y = 2;\n  return y;\n}`,
+          replacement_lines: [`  const y = 2;`, `  return y;`, `}`],
         },
         undefined,
         undefined,
@@ -47,7 +47,7 @@ describe("boundary duplication auto-fix", () => {
         {
           path: "sample.ts",
           remove_from: line2Hash, remove_to: line3Hash,
-          replacement_text: `  const y = 2;\n  return y;\n}`,
+          replacement_lines: [`  const y = 2;`, `  return y;`, `}`],
         },
         undefined,
         undefined,
@@ -79,7 +79,7 @@ describe("boundary duplication auto-fix", () => {
         {
           path: "server.ts",
           remove_from: line2Hash, remove_to: line3Hash,
-          replacement_text: `  const result = processData();\n  res.json(result);\n});`,
+          replacement_lines: [`  const result = processData();`, `  res.json(result);`, `});`],
         },
         undefined,
         undefined,
@@ -106,7 +106,7 @@ describe("boundary duplication auto-fix", () => {
         {
           path: "logic.ts",
           remove_from: line2Hash, remove_to: line3Hash,
-          replacement_text: `before();\nif (ok) {\n  runSafe();`,
+          replacement_lines: [`before();`, `if (ok) {`, `  runSafe();`],
         },
         undefined,
         undefined,
@@ -138,7 +138,7 @@ describe("boundary duplication auto-fix", () => {
         {
           path: "multi.ts",
           remove_from: line4Hash, remove_to: line5Hash,
-          replacement_text: `if (b) {\n  yNew();\n}`,
+          replacement_lines: [`if (b) {`, `  yNew();`, `}`],
         },
         undefined,
         undefined,
@@ -179,7 +179,7 @@ describe("boundary duplication auto-fix", () => {
         "e1",
         {
           path: "fourth.ts",
-          remove_from: fooHash, remove_to: barHash, replacement_text: `foo();\nbar();\n}`,
+          remove_from: fooHash, remove_to: barHash, replacement_lines: [`foo();`, `bar();`, `}`],
         },
         undefined,
         undefined,
@@ -222,14 +222,14 @@ describe("new-line boundary duplication (auto-fix)", () => {
         {
           path: "overlay.ts",
           remove_from: classHash, remove_to: blankHash,
-          replacement_text: [
+          replacement_lines: [
             "export class WorkflowEditorOverlay {",
             "  private activeTab = 0;",
             "  private confirmingClose = false;",
             "",
             "  constructor() {",
             "  }",
-          ].join("\n"),
+          ],
         },
         undefined,
         undefined,
@@ -261,7 +261,7 @@ describe("new-line boundary duplication (auto-fix)", () => {
         {
           path: "reorder.ts",
           remove_from: barHash, remove_to: bazHash,
-          replacement_text: "bar();\nbaz();\nfoo();",
+          replacement_lines: ["bar();", "baz();", "foo();"],
         },
         undefined,
         undefined,
@@ -298,7 +298,7 @@ describe("new-line boundary duplication (auto-fix)", () => {
         {
           path: "multi.ts",
           remove_from: bHash, remove_to: yHash,
-          replacement_text: "if (b) {\n  yNew();\n}",
+          replacement_lines: ["if (b) {", "  yNew();", "}"],
         },
         undefined,
         undefined,
@@ -329,7 +329,7 @@ describe("new-line boundary duplication (auto-fix)", () => {
         {
           path: "plain.ts",
           remove_from: aHash, remove_to: bHash,
-          replacement_text: "a\nb\nX",
+          replacement_lines: ["a", "b", "X"],
         },
         undefined,
         undefined,
@@ -366,13 +366,13 @@ describe("multi-line boundary duplication runs (auto-fix)", () => {
         {
           path: "imports.ts",
           remove_from: piHash, remove_to: piHash,
-          replacement_text: [
+          replacement_lines: [
             `import { ScrollableTabContent } from "./scrollable";`,
             `import { StatsTabContent } from "./stats";`,
             `import { TabbedOverlay } from "./overlay";`,
             `import { formatTokens } from "./tokens";`,
             `type SessionEntry = { id: string };`,
-          ].join("\n"),
+          ],
         },
         undefined,
         undefined,
@@ -411,7 +411,7 @@ describe("multi-line boundary duplication runs (auto-fix)", () => {
         {
           path: "nested.ts",
           remove_from: bodyHash, remove_to: bodyHash,
-          replacement_text: "  const x = 2;\n}\n}",
+          replacement_lines: ["  const x = 2;", "}", "}"],
         },
         undefined,
         undefined,
@@ -438,7 +438,7 @@ describe("multi-line boundary duplication runs (auto-fix)", () => {
         {
           path: "before-run.ts",
           remove_from: targetHash, remove_to: targetHash,
-          replacement_text: "NEW();\nbefore1();\nbefore2();",
+          replacement_lines: ["NEW();", "before1();", "before2();"],
         },
         undefined,
         undefined,
@@ -465,7 +465,7 @@ describe("multi-line boundary duplication runs (auto-fix)", () => {
         {
           path: "leading-run.ts",
           remove_from: targetHash, remove_to: targetHash,
-          replacement_text: "c\nb\na\nX",
+          replacement_lines: ["c", "b", "a", "X"],
         },
         undefined,
         undefined,
@@ -492,7 +492,7 @@ describe("multi-line boundary duplication runs (auto-fix)", () => {
         {
           path: "prefix-copy.ts",
           remove_from: targetHash, remove_to: targetHash,
-          replacement_text: "a\nb\nc\nX",
+          replacement_lines: ["a", "b", "c", "X"],
         },
         undefined,
         undefined,
@@ -519,7 +519,7 @@ describe("multi-line boundary duplication runs (auto-fix)", () => {
         {
           path: "both-edges.ts",
           remove_from: targetHash, remove_to: targetHash,
-          replacement_text: "X",
+          replacement_lines: ["X"],
         },
         undefined,
         undefined,
@@ -549,7 +549,7 @@ describe("section-unique boundary duplication (auto-fix)", () => {
         {
           path: "iface.ts",
           remove_from: blankHash, remove_to: blankHash,
-          replacement_text: "export interface Foo {\n  x: number;\n}\n\nexport function main2() {}",
+          replacement_lines: ["export interface Foo {", "  x: number;", "}", "", "export function main2() {}"],
         },
         undefined,
         undefined,
@@ -578,7 +578,7 @@ describe("section-unique boundary duplication (auto-fix)", () => {
         {
           path: "pre-block.ts",
           remove_from: targetHash, remove_to: targetHash,
-          replacement_text: "NEW\nif (b) {\n  y();\n}",
+          replacement_lines: ["NEW", "if (b) {", "  y();", "}"],
         },
         undefined,
         undefined,
@@ -605,7 +605,7 @@ describe("section-unique boundary duplication (auto-fix)", () => {
         {
           path: "repeat.ts",
           remove_from: xHash, remove_to: xHash,
-          replacement_text: "X\nY\nZ",
+          replacement_lines: ["X", "Y", "Z"],
         },
         undefined,
         undefined,

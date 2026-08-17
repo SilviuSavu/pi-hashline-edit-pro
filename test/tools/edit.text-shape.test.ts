@@ -14,7 +14,7 @@ describe("edit tool text shape (token budget)", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB",
+          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -36,7 +36,7 @@ describe("edit tool text shape (token budget)", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: "BBB",
+          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["BBB"],
         },
         undefined,
         undefined,
@@ -57,7 +57,7 @@ describe("edit tool text shape (token budget)", () => {
           "e1",
           {
             path: "sample.ts",
-            remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_text: "",
+            remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_lines: [],
           },
           undefined,
           undefined,
@@ -77,7 +77,7 @@ describe("edit tool text shape (token budget)", () => {
         "e1",
         {
           path: "sample.ts",
-          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_text: `b${longLine.slice(1)}`,
+          remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: [`b${longLine.slice(1)}`],
         },
         undefined,
         undefined,

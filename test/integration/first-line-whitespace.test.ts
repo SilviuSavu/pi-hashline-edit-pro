@@ -11,7 +11,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const bHash = extractHash(lines.find((l: string) => l.includes("│bbb"))!);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: "  BBB" },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["  BBB"] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");
@@ -27,7 +27,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const bHash = extractHash(lines.find((l: string) => l.includes("│bbb"))!);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: "  BBB" },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["  BBB"] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");
@@ -35,7 +35,7 @@ describe("replace tool — first-line whitespace preservation", () => {
     });
   });
 
-  it("normalizes CRLF separators inside replacement_text without losing first-line whitespace", async () => {
+  it("normalizes CRLF separators inside replacement_lines without losing first-line whitespace", async () => {
     await withTempFile("sample.ts", "aaa\r\nbbb\r\nccc\r\n", async ({ cwd, path }) => {
       const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
       const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
@@ -43,7 +43,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const bHash = extractHash(lines.find((l: string) => l.includes("│bbb"))!);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: "  BBB\r\n  CCC" },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["  BBB", "  CCC"] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");
@@ -60,7 +60,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const cHash = extractHash(lines.find((l: string) => l.includes("│ccc"))!);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: cHash, replacement_text: "    BBB\n  CCC" },
+        { path: "sample.ts", remove_from: bHash, remove_to: cHash, replacement_lines: ["    BBB", "  CCC"] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");
@@ -77,7 +77,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const bHash = extractHash(bRow);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: `${bHash}│  BBB` },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: [`${bHash}│  BBB`] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");
@@ -93,7 +93,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const aHash = extractHash(lines.find((l: string) => l.includes("│  aaa"))!);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: aHash, remove_to: aHash, replacement_text: "    AAA" },
+        { path: "sample.ts", remove_from: aHash, remove_to: aHash, replacement_lines: ["    AAA"] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");
@@ -109,7 +109,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const bHash = extractHash(lines.find((l: string) => l.includes("│bbb"))!);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: "  BBB" },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["  BBB"] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");
@@ -125,7 +125,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const bHash = extractHash(lines.find((l: string) => l.includes("│bbb"))!);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: "  BBB" },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["  BBB"] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");
@@ -141,7 +141,7 @@ describe("replace tool — first-line whitespace preservation", () => {
       const aHash = extractHash(lines.find((l: string) => l.includes("│aaa"))!);
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: aHash, remove_to: aHash, replacement_text: "  AAA" },
+        { path: "sample.ts", remove_from: aHash, remove_to: aHash, replacement_lines: ["  AAA"] },
         undefined, undefined, ctx,
       );
       expect(editResult.content[0].text).toContain("Successfully replaced");

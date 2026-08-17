@@ -14,7 +14,7 @@ describe("chained edit anchors", () => {
 
       const editResult = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: betaRef, remove_to: betaRef, replacement_text: "BETA" },
+        { path: "sample.ts", remove_from: betaRef, remove_to: betaRef, replacement_lines: ["BETA"] },
         undefined,
         undefined,
         ctx,
@@ -30,7 +30,7 @@ describe("chained edit anchors", () => {
 
       const editResult2 = await editTool.execute(
         "e2",
-        { path: "sample.ts", remove_from: freshRef, remove_to: freshRef, replacement_text: "BETA-CHAINED" },
+        { path: "sample.ts", remove_from: freshRef, remove_to: freshRef, replacement_lines: ["BETA-CHAINED"] },
         undefined,
         undefined,
         ctx,
@@ -62,7 +62,7 @@ describe("chained edit anchors", () => {
         "e1",
         {
           path: "big.ts",
-          remove_from: line1Ref, remove_to: line15Ref, replacement_text: newLines.join("\n"),
+          remove_from: line1Ref, remove_to: line15Ref, replacement_lines: newLines,
         },
         undefined,
         undefined,
@@ -86,7 +86,7 @@ describe("chained edit anchors", () => {
       const newLines = Array.from({ length: 11 }, (_, i) => `EXPANDED ${i + 1}`);
       const editResult = await editTool.execute(
         "e1",
-        { path: "expand.ts", remove_from: targetRef, remove_to: targetRef, replacement_text: newLines.join("\n") },
+        { path: "expand.ts", remove_from: targetRef, remove_to: targetRef, replacement_lines: newLines },
         undefined,
         undefined,
         ctx,
@@ -112,7 +112,7 @@ describe("chained edit anchors", () => {
 
       await editTool.execute(
         "e1",
-        { path: "stale.ts", remove_from: betaRef, remove_to: betaRef, replacement_text: "BETA" },
+        { path: "stale.ts", remove_from: betaRef, remove_to: betaRef, replacement_lines: ["BETA"] },
         undefined,
         undefined,
         ctx,
@@ -120,7 +120,7 @@ describe("chained edit anchors", () => {
       await expect(
         editTool.execute(
           "e2-stale",
-          { path: "stale.ts", remove_from: betaRef, remove_to: betaRef, replacement_text: "BETA-AGAIN" },
+          { path: "stale.ts", remove_from: betaRef, remove_to: betaRef, replacement_lines: ["BETA-AGAIN"] },
           undefined,
           undefined,
           ctx,
@@ -129,7 +129,7 @@ describe("chained edit anchors", () => {
 
       const alphaEdit = await editTool.execute(
         "e3",
-        { path: "stale.ts", remove_from: alphaRef, remove_to: alphaRef, replacement_text: "ALPHA" },
+        { path: "stale.ts", remove_from: alphaRef, remove_to: alphaRef, replacement_lines: ["ALPHA"] },
         undefined,
         undefined,
         ctx,
@@ -158,7 +158,7 @@ describe("chained edit anchors", () => {
 
       const editResult = await editTool.execute(
         "e1",
-        { path: "stable.ts", remove_from: gammaRef, remove_to: betaRef, replacement_text: "X" },
+        { path: "stable.ts", remove_from: gammaRef, remove_to: betaRef, replacement_lines: ["X"] },
         undefined,
         undefined,
         ctx,
@@ -168,7 +168,7 @@ describe("chained edit anchors", () => {
 
       const alphaEdit = await editTool.execute(
         "e2",
-        { path: "stable.ts", remove_from: alphaRef, remove_to: alphaRef, replacement_text: "ALPHA" },
+        { path: "stable.ts", remove_from: alphaRef, remove_to: alphaRef, replacement_lines: ["ALPHA"] },
         undefined,
         undefined,
         ctx,

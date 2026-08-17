@@ -48,10 +48,16 @@ import { saveUndo } from "./replace-undo";
 import { loadHashStore, findSnapshotPaths, type HashStore } from "./hash-store";
 import { getServed, recordServedSafe, recordServedDiffSafe } from "./served";
 
-const replacementTextSchema = Type.String({
-  description:
-    "Replacement text as a single string with \\n line separators; every \\n separates lines, so a trailing \\n adds a final empty line. Mirror the removed lines exactly, blank lines included. A replacement that is only blank lines is written as one \\n per blank line. Use \"\" to delete the range."
-});
+const replacementLinesSchema = Type.Array(
+  Type.String({
+    description:
+      "One replacement line. Each element is exactly one line; do not embed \\n inside an element — use separate elements.",
+  }),
+  {
+    description:
+      "Replacement lines as an array of strings, one element per line. Use [] to delete the range."
+  }
+);
 
 const removeFromSchema = Type.String({
   description: "Bare 3-char HASH only (e.g. \"aB3\") — copy just the hash from the leftmost column of a read row like `aB3│content`; never the line content. Marks the FIRST line to remove (inclusive)",
@@ -66,7 +72,7 @@ export const editToolSchema = Type.Object(
     path: Type.Optional(Type.String({ description: "Path to edit. Required — always provide it explicitly; it is only auto-resolved from the anchors as a fallback when omitted by mistake." })),
     remove_from: removeFromSchema,
     remove_to: removeToSchema,
-    replacement_text: replacementTextSchema,
+    replacement_lines: replacementLinesSchema,
   },
   { additionalProperties: false },
 );
@@ -74,7 +80,7 @@ export type ReqParams = {
   path: string;
   remove_from: string;
   remove_to: string;
-  replacement_text: string;
+  replacement_lines: string[];
 };
 
 export type ReplaceDetails = {
@@ -104,7 +110,7 @@ interface PipelineResult {
 
 const PREVIEW_DEBOUNCE_MS = 150;
 
-const ROOT_KS = new Set(["path", "remove_from", "remove_to", "replacement_text"]);
+const ROOT_KS = new Set(["path", "remove_from", "remove_to", "replacement_lines"]);
 
 export function assertReq(
   request: unknown,
@@ -122,10 +128,11 @@ export function assertReq(
   if (
     typeof request.remove_from !== "string" ||
     typeof request.remove_to !== "string" ||
-    typeof request.replacement_text !== "string"
+    !Array.isArray(request.replacement_lines) ||
+    request.replacement_lines.some((line) => typeof line !== "string")
   ) {
     throw new Error(
-      '[E_BAD_SHAPE] Edit request requires "remove_from", "remove_to", and "replacement_text" at the top level.',
+      '[E_BAD_SHAPE] Edit request requires "remove_from", "remove_to", and "replacement_lines" at the top level. replacement_lines must be an array of strings, one element per line (use [] to delete).',
     );
   }
 }
@@ -224,7 +231,7 @@ export async function execPipeline(
     {
       remove_from: params.remove_from,
       remove_to: params.remove_to,
-      replacement_text: params.replacement_text,
+      replacement_lines: params.replacement_lines,
     },
     editWarnings,
   );

@@ -32,7 +32,7 @@ describe("served-state range verification", () => {
       try {
         await editTool.execute(
           "e1",
-          { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_text: "a\nx\nd" },
+          { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_lines: ["a", "x", "d"] },
           undefined,
           undefined,
           ctx,
@@ -67,7 +67,7 @@ describe("served-state range verification", () => {
       try {
         await editTool.execute(
           "e1",
-          { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_text: "a\nx\nd" },
+          { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_lines: ["a", "x", "d"] },
           undefined,
           undefined,
           ctx,
@@ -81,7 +81,7 @@ describe("served-state range verification", () => {
 
       const retry = await editTool.execute(
         "e2",
-        { path: "sample.ts", remove_from: freshA, remove_to: freshD, replacement_text: "a\nx\nd" },
+        { path: "sample.ts", remove_from: freshA, remove_to: freshD, replacement_lines: ["a", "x", "d"] },
         undefined,
         undefined,
         ctx,
@@ -106,7 +106,7 @@ describe("served-state range verification", () => {
       try {
         await editTool.execute(
           "e1",
-          { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_text: "x" },
+          { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_lines: ["x"] },
           undefined,
           undefined,
           ctx,
@@ -126,7 +126,7 @@ describe("served-state range verification", () => {
 
       const retry = await editTool.execute(
         "e2",
-        { path: "sample.ts", remove_from: contextHash, remove_to: contextHash, replacement_text: "c" },
+        { path: "sample.ts", remove_from: contextHash, remove_to: contextHash, replacement_lines: ["c"] },
         undefined,
         undefined,
         ctx,
@@ -149,7 +149,7 @@ describe("served-state range verification", () => {
 
       const result = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: cHash, replacement_text: "x" },
+        { path: "sample.ts", remove_from: bHash, remove_to: cHash, replacement_lines: ["x"] },
         undefined,
         undefined,
         ctx,
@@ -173,7 +173,7 @@ describe("served-state range verification", () => {
 
       const result = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_text: "a\nx\nd" },
+        { path: "sample.ts", remove_from: aHash, remove_to: dHash, replacement_lines: ["a", "x", "d"] },
         undefined,
         undefined,
         ctx,
@@ -196,7 +196,7 @@ describe("served-state range verification", () => {
       try {
         await editTool.execute(
           "e1",
-          { path: "sample.ts", remove_from: aHash, remove_to: fHash, replacement_text: "x" },
+          { path: "sample.ts", remove_from: aHash, remove_to: fHash, replacement_lines: ["x"] },
           undefined,
           undefined,
           ctx,
@@ -223,7 +223,7 @@ describe("served-state range verification", () => {
       const aHash = extractHash(headLines.find((l: string) => l.includes("│a"))!);
       const first = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: aHash, remove_to: aHash, replacement_text: "A" },
+        { path: "sample.ts", remove_from: aHash, remove_to: aHash, replacement_lines: ["A"] },
         undefined,
         undefined,
         ctx,
@@ -234,7 +234,7 @@ describe("served-state range verification", () => {
       const jHash = extractHash(getText(tail).split("\n").find((l: string) => l.includes("│j"))!);
       const second = await editTool.execute(
         "e2",
-        { path: "sample.ts", remove_from: jHash, remove_to: jHash, replacement_text: "J" },
+        { path: "sample.ts", remove_from: jHash, remove_to: jHash, replacement_lines: ["J"] },
         undefined,
         undefined,
         ctx,
@@ -248,7 +248,7 @@ describe("served-state range verification", () => {
       await expect(
         editTool.execute(
           "e3",
-          { path: "sample.ts", remove_from: aHashAfter, remove_to: jHashAfter, replacement_text: "X" },
+          { path: "sample.ts", remove_from: aHashAfter, remove_to: jHashAfter, replacement_lines: ["X"] },
           undefined,
           undefined,
           ctx,
@@ -269,7 +269,7 @@ describe("served-state range verification", () => {
 
       const result = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: aHash, remove_to: bHash, replacement_text: "x" },
+        { path: "sample.ts", remove_from: aHash, remove_to: bHash, replacement_lines: ["x"] },
         undefined,
         undefined,
         ctx,
@@ -286,7 +286,7 @@ describe("served-state range verification", () => {
 
       const result = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_text: "A" },
+        { path: "sample.ts", remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_lines: ["A"] },
         undefined,
         undefined,
         ctx,
@@ -319,7 +319,7 @@ describe("served-state range verification", () => {
 
       const result = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: "B" },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["B"] },
         undefined,
         undefined,
         ctx,
@@ -344,7 +344,7 @@ describe("served-state range verification", () => {
 
       const edited = await editTool.execute(
         "e1",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: "B" },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["B"] },
         undefined,
         undefined,
         ctx,
@@ -358,7 +358,7 @@ describe("served-state range verification", () => {
 
       const retry = await editTool.execute(
         "e2",
-        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_text: "B" },
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["B"] },
         undefined,
         undefined,
         ctx,

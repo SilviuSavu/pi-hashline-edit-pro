@@ -62,7 +62,7 @@ describe("prompt guidelines", () => {
     );
     expect(content).toContain("remove_from");
     expect(content).toContain("remove_to");
-    expect(content).toContain("replacement_text");
+    expect(content).toContain("replacement_lines");
     expect(content).not.toContain("hash_bounds");
     expect(content).not.toContain("new_content");
     expect(content).not.toContain("{{");
