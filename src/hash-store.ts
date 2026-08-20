@@ -1,12 +1,66 @@
 import { existsSync } from "fs";
 import { readFile, rename, mkdir, stat } from "fs/promises";
-import { DatabaseSync } from "node:sqlite";
 import { hashStorePath, hashStoreDir, legacyHashStorePath } from "./paths";
 import { errCode, isRec, splitLines } from "./utils";
 import { initHasher, contentChecksum } from "./hashline/hasher";
 import { HASH_RE } from "./hashline/alphabet";
 import { HASH_STORE_VERSION, HASH_STORE_BUSY_TIMEOUT } from "./constants";
+
 type SqlParams = (string | number)[];
+
+interface RawStatement {
+  get(...params: SqlParams): unknown;
+  all(...params: SqlParams): unknown;
+  run(...params: SqlParams): unknown;
+}
+interface RawDb {
+  exec(sql: string): void;
+  prepare(sql: string): RawStatement;
+  close(): void;
+  readonly isOpen: boolean;
+}
+export type SqliteEngine = "node:sqlite" | "bun:sqlite";
+
+interface BunDbLike {
+  exec(sql: string): void;
+  prepare(sql: string): {
+    get(...params: SqlParams): unknown;
+    all(...params: SqlParams): unknown[];
+    run(...params: SqlParams): unknown;
+  };
+  close(): void;
+}
+
+let openDbFn: (path: string) => RawDb;
+let sqliteEngine: SqliteEngine;
+
+if (typeof process !== "undefined" && (process.versions as Record<string, string | undefined>).bun) {
+  const specifier = "bun:sqlite";
+  const mod = await import(specifier) as { Database: new (path: string) => BunDbLike };
+  sqliteEngine = "bun:sqlite";
+  openDbFn = (path) => {
+    const db = new mod.Database(path);
+    db.exec(`PRAGMA busy_timeout = ${HASH_STORE_BUSY_TIMEOUT}`);
+    let closed = false;
+    return {
+      exec: (sql) => db.exec(sql),
+      prepare: (sql) => {
+        const stmt = db.prepare(sql);
+        return {
+          get: (...p) => stmt.get(...p) ?? undefined,
+          all: (...p) => stmt.all(...p),
+          run: (...p) => stmt.run(...p),
+        };
+      },
+      close: () => { if (!closed) { closed = true; db.close(); } },
+      get isOpen() { return !closed; },
+    };
+  };
+} else {
+  const { DatabaseSync } = await import("node:sqlite");
+  sqliteEngine = "node:sqlite";
+  openDbFn = (path) => new DatabaseSync(path, { timeout: HASH_STORE_BUSY_TIMEOUT }) as unknown as RawDb;
+}
 
 interface Prepared {
   get: (...params: SqlParams) => Record<string, unknown> | undefined;
@@ -24,7 +78,7 @@ interface Prepared {
 
 export interface HashStore {
   readonly stmts: Prepared;
-  readonly engine: "node:sqlite";
+  readonly engine: SqliteEngine;
 }
 
 export interface UndoRecord {
@@ -116,11 +170,11 @@ function withBusyRetry<T>(fn: () => T): T {
   throw lastError;
 }
 
-function openDbWithBusyRetry(storePath: string): { db: DatabaseSync; stmts: Prepared } {
+function openDbWithBusyRetry(storePath: string): { db: RawDb; stmts: Prepared } {
   return withBusyRetry(() => openDb(storePath));
 }
 
-let cachedDb: { path: string; db: DatabaseSync; stmts: Prepared } | null = null;
+let cachedDb: { path: string; db: RawDb; stmts: Prepared } | null = null;
 let opening: { path: string; promise: Promise<HashStore> } | null = null;
 let exitHandlerRegistered = false;
 interface SnapshotCacheEntry {
@@ -130,10 +184,8 @@ interface SnapshotCacheEntry {
 }
 const snapshotCache = new Map<string, SnapshotCacheEntry>();
 export const SNAPSHOT_CACHE_LIMIT = 256;
-function openDb(storePath: string): { db: DatabaseSync; stmts: Prepared } {
-  const db = new DatabaseSync(storePath, {
-    timeout: HASH_STORE_BUSY_TIMEOUT,
-  });
+function openDb(storePath: string): { db: RawDb; stmts: Prepared } {
+  const db = openDbFn(storePath);
   try {
     return buildStore(db);
   } catch (error) {
@@ -145,8 +197,8 @@ function openDb(storePath: string): { db: DatabaseSync; stmts: Prepared } {
 }
 
 function buildStore(
-  db: DatabaseSync,
-): { db: DatabaseSync; stmts: Prepared } {
+  db: RawDb,
+): { db: RawDb; stmts: Prepared } {
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA synchronous = NORMAL");
   db.exec(
@@ -229,7 +281,7 @@ function buildStore(
   return { db, stmts };
 }
 
-function isHealthy(db: DatabaseSync): boolean {
+function isHealthy(db: RawDb): boolean {
   try {
     const row = db.prepare("PRAGMA quick_check").get() as { quick_check?: string } | undefined;
     return row?.quick_check === "ok";
@@ -252,7 +304,7 @@ async function quarantineStore(storePath: string): Promise<void> {
   }
 }
 
-function shutdownDb(db: DatabaseSync): void {
+function shutdownDb(db: RawDb): void {
   try {
     db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
   } catch {
@@ -267,7 +319,7 @@ async function openStore(storePath: string): Promise<HashStore> {
   await mkdir(hashStoreDir(), { recursive: true });
 
   let existed = existsSync(storePath);
-  let opened: { db: DatabaseSync; stmts: Prepared };
+  let opened: { db: RawDb; stmts: Prepared };
   try {
     opened = openDbWithBusyRetry(storePath);
   } catch (error) {
@@ -305,13 +357,13 @@ async function openStore(storePath: string): Promise<HashStore> {
     }
   }
 
-  return { stmts, engine: "node:sqlite" };
+  return { stmts, engine: sqliteEngine };
 }
 
 export function loadHashStore(): Promise<HashStore> {
   const storePath = hashStorePath();
   if (cachedDb && cachedDb.path === storePath && cachedDb.db.isOpen) {
-    return Promise.resolve({ stmts: cachedDb.stmts, engine: "node:sqlite" });
+    return Promise.resolve({ stmts: cachedDb.stmts, engine: sqliteEngine });
   }
   if (opening && opening.path === storePath) {
     return opening.promise;
@@ -347,7 +399,7 @@ function withStore(fn: () => void): void {
   });
 }
 
-async function migrateLegacy(db: DatabaseSync): Promise<void> {
+async function migrateLegacy(db: RawDb): Promise<void> {
   const legacyPath = legacyHashStorePath();
   let content: string;
   try {
