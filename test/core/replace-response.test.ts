@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { applyPatch } from "diff";
 import { buildNoop, buildChanged } from "../../src/replace-response";
 import { lineHashes } from "../../src/hashline";
 import { useTestHome } from "../support/fixtures";
@@ -15,6 +16,7 @@ describe("buildNoop", () => {
       warnings: undefined,
     });
     expect(result.content[0].text).toContain("No changes made to test.txt");
+    expect(result.details.patch).toBe("");
     expect(result.details.classification).toBe("noop");
     expect(result.details.metrics!.edits_attempted).toBe(1);
   });
@@ -79,6 +81,30 @@ describe("buildChanged", () => {
     expect(output.details.metrics!.classification).toBe("applied");
     expect(output.details.metrics!.edits_attempted).toBe(1);
     expect(output.details.metrics!.changed_lines).toEqual({ first: 2, last: 2 });
+  });
+
+  it("includes a standard unified patch that round-trips", async () => {
+    const original = "aaa\nbbb\nccc\n";
+    const result = "aaa\nBBB\nccc\n";
+    const originalHashes = await lineHashes(original, home.testPath);
+    const resultHashes = await lineHashes(result, home.testPath);
+    const output = buildChanged({
+      path: "test.txt",
+      originalNormalized: original,
+      originalHashes,
+      result,
+      resultHashes,
+      warnings: undefined,
+      snapshotId: "snap1",
+      editMeta: { editsAttempted: 1, noopEditsCount: 0, firstChangedLine: 2, lastChangedLine: 2, addedLines: 1, removedLines: 1 },
+    });
+    const patch = output.details.patch!;
+    expect(patch).toContain("--- test.txt");
+    expect(patch).toContain("+++ test.txt");
+    expect(patch).toContain("@@");
+    expect(patch).toContain("-bbb");
+    expect(patch).toContain("+BBB");
+    expect(applyPatch(original, patch)).toBe(result);
   });
 
   it("includes warnings when provided", async () => {

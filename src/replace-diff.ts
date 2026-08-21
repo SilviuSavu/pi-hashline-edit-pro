@@ -139,3 +139,14 @@ export function genDiff(
 
   return { diff: output.join("\n"), firstChangedLine };
 }
+
+export function genPatch(
+  path: string,
+  oldContent: string,
+  newContent: string,
+): string {
+  return Diff.createTwoFilesPatch(path, path, oldContent, newContent, undefined, undefined, {
+    context: 4,
+    headerOptions: Diff.FILE_HEADERS_ONLY,
+  });
+}

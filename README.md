@@ -127,8 +127,8 @@ Enabled by default. After a successful `write` that changes the file, the extens
 All three tools return machine-readable metadata in `details` alongside the model-visible text:
 
 - `read`: `details.truncation` (set when the output was truncated), `details.snapshotId` (a `v2|path|ino|mtime|ctime|size` fingerprint of the file), `details.nextOffset` (use as the next `offset`), and `details.metrics` with `truncated` and `next_offset`.
-- `replace`: `details.diff` (the post-edit diff; `+HASH│` and ` HASH│` rows carry the current anchors), `details.firstChangedLine`, `details.snapshotId`, `details.classification` (`"noop"` when nothing changed), and `details.metrics`: `edits_attempted`, `edits_noop`, `warnings`, `classification` (`"applied"` or `"noop"`), `changed_lines` (`{ first, last }`), `added_lines`, `removed_lines`.
-- `undo_last_replace`: `details.diff` (the undo diff with the restored anchors) and `details.metrics` (same shape as `replace`).
+- `replace`: `details.diff` (the post-edit diff; `+HASH│` and ` HASH│` rows carry the current anchors), `details.patch` (a standard unified patch of the changes, for external tools), `details.firstChangedLine`, `details.snapshotId`, `details.classification` (`"noop"` when nothing changed), and `details.metrics`: `edits_attempted`, `edits_noop`, `warnings`, `classification` (`"applied"` or `"noop"`), `changed_lines` (`{ first, last }`), `added_lines`, `removed_lines`.
+- `undo_last_replace`: `details.diff` (the undo diff with the restored anchors), `details.patch` (a standard unified patch of the restored changes), and `details.metrics` (same shape as `replace`).
 
 ## Settings
 

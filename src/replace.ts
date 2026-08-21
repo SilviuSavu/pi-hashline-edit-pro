@@ -85,6 +85,7 @@ export type ReqParams = {
 
 export type ReplaceDetails = {
   diff: string;
+  patch?: string;
   firstChangedLine?: number;
   snapshotId?: string;
   classification?: "noop";

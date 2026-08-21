@@ -163,6 +163,12 @@ describe("undo_last_replace", () => {
       const postHashes = await lineHashes("aaa\nBBB\nccc\n", home.testPath);
       expect(diff).toContain(`-${postHashes[1]}│BBB`);
       expect(diff).toContain(`+${hashes[1]}│bbb`);
+      const patch = undoResult.details?.patch as string | undefined;
+      expect(patch).toBeDefined();
+      expect(patch).toContain("--- sample.ts");
+      expect(patch).toContain("+++ sample.ts");
+      expect(patch).toContain("-BBB");
+      expect(patch).toContain("+bbb");
     });
   });
 

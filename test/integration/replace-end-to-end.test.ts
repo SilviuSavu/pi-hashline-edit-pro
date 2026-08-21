@@ -298,4 +298,28 @@ describe("replace tool — end-to-end", () => {
       expect(content).toBe("aaa\nBBB\nccc\n");
     });
   });
+
+  it("returns a standard unified patch in details that applies cleanly", async () => {
+    await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
+      const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const lines = getText(readResult).split("\n");
+      const bHash = extractHash(lines.find((l: string) => l.includes("│bbb"))!);
+
+      const editResult = await editTool.execute(
+        "e1",
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["BBB"] },
+        undefined, undefined, ctx,
+      );
+
+      const details = editResult.details as { patch?: string };
+      expect(details.patch).toBeDefined();
+      expect(details.patch!).toContain("--- sample.ts");
+      expect(details.patch!).toContain("+++ sample.ts");
+      expect(details.patch!).toContain("-bbb");
+      expect(details.patch!).toContain("+BBB");
+      const { applyPatch } = await import("diff");
+      expect(applyPatch("aaa\nbbb\nccc\n", details.patch!)).toBe("aaa\nBBB\nccc\n");
+    });
+  });
 });

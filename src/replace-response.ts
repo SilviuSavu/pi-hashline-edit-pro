@@ -1,5 +1,5 @@
 import type { ReplaceDetails } from "./replace";
-import { genDiff } from "./replace-diff";
+import { genDiff, genPatch } from "./replace-diff";
 import { visLines, clipLine } from "./utils";
 
 type TResult = {
@@ -114,6 +114,7 @@ export function buildNoop(input: NoopInput): TResult {
 		content: [{ type: "text", text }],
 		details: {
 			diff: "",
+			patch: "",
 			firstChangedLine: undefined,
 			snapshotId,
 			classification: "noop" as const,
@@ -154,6 +155,7 @@ export function buildChanged(input: SuccessInput): TResult {
     content: [{ type: "text", text }],
     details: {
       diff: diffResult.diff,
+      patch: genPatch(path, originalNormalized, result),
       firstChangedLine:
         editMeta.firstChangedLine ?? diffResult.firstChangedLine,
       snapshotId,
