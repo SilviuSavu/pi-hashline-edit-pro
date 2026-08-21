@@ -216,7 +216,7 @@ export function regRead(pi: ExtensionAPI): void {
 				fileHashes,
 				resolvedPath,
 			);
-			await recordServedSafe(resolvedPath, preview.servedHashes, "read");
+			await recordServedSafe(resolvedPath, preview.servedHashes, "read", new Set(fileHashes));
 			const snapshotId = await safeSnapId(absolutePath, "read");
 			const previewText =
 				hadUtf8DecodeErrors

@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "fs/promises";
 import { join } from "path";
 import { DatabaseSync } from "node:sqlite";
 import { loadHashStore, shutdownHashStore, pruneMissing } from "../../src/hash-store";
-import { getServed, recordServed, clearServed, servedHashesFromDiff, recordServedSafe, recordServedDiffSafe } from "../../src/served";
+import { getServed, recordServed, recordServedDiff, clearServed, servedHashesFromDiff, recordServedSafe, recordServedDiffSafe } from "../../src/served";
 import * as hashStoreModule from "../../src/hash-store";
 import { initHasher } from "../../src/hashline";
 import { getWritableTempRoot } from "../support/fixtures";
@@ -51,6 +51,35 @@ describe("served store", () => {
       recordServed(store, "/a.ts", ["aB3"]);
       clearServed(store, "/a.ts");
       expect(getServed(store, "/a.ts")).toBeUndefined();
+    });
+  });
+
+  it("prunes hashes outside the scope of the current file", async () => {
+    await withTempHome(async () => {
+      const store = await loadHashStore();
+      recordServed(store, "/a.ts", ["aB3", "cD4", "eF5"]);
+      recordServed(store, "/a.ts", ["gH6"], new Set(["cD4", "eF5", "gH6"]));
+      const served = getServed(store, "/a.ts");
+      expect(served).toEqual(new Set(["cD4", "eF5", "gH6"]));
+    });
+  });
+
+  it("prunes stale hashes even when no new hashes are recorded", async () => {
+    await withTempHome(async () => {
+      const store = await loadHashStore();
+      recordServed(store, "/a.ts", ["aB3", "cD4"]);
+      recordServed(store, "/a.ts", [], new Set(["cD4"]));
+      const served = getServed(store, "/a.ts");
+      expect(served).toEqual(new Set(["cD4"]));
+    });
+  });
+
+  it("scopes diff recording to the current file hashes", async () => {
+    await withTempHome(async () => {
+      const store = await loadHashStore();
+      recordServed(store, "/a.ts", ["aB3", "cD4", "eF5"]);
+      recordServedDiff(store, "/a.ts", " aB3│x\n-   │y\n+cD4│z\n", new Set(["aB3", "cD4"]));
+      expect(getServed(store, "/a.ts")).toEqual(new Set(["aB3", "cD4"]));
     });
   });
 

@@ -255,9 +255,9 @@ export async function execPipeline(
   } catch (error) {
     if (options?.noPersist !== true) {
       if (error instanceof RangeStaleError) {
-        await recordServedSafe(absolutePath, error.rangeHashes, "range-stale feedback");
+        await recordServedSafe(absolutePath, error.rangeHashes, "range-stale feedback", new Set(originalHashes));
       } else if (error instanceof AnchorMismatchError) {
-        await recordServedSafe(absolutePath, error.feedbackHashes, "anchor-mismatch feedback");
+        await recordServedSafe(absolutePath, error.feedbackHashes, "anchor-mismatch feedback", new Set(originalHashes));
       }
     }
     throw error;
@@ -572,7 +572,7 @@ export function buildToolDef(): ToolDef {
         };
         const changed = buildChanged(successInput);
         if (changed.details.diff) {
-          await recordServedDiffSafe(mutationTargetPath, changed.details.diff, "post-edit diff");
+          await recordServedDiffSafe(mutationTargetPath, changed.details.diff, "post-edit diff", new Set(resultHashes));
         }
         return changed;
       });

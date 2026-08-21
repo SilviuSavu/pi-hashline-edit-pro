@@ -411,4 +411,44 @@ describe("served-state range verification", () => {
       shutdownHashStore();
     });
   });
+
+  it("rejects a re-edit with a pre-edit anchor after an external revert, then accepts the retry", async () => {
+    await withTempFile("sample.ts", "a\nb\nc\nd\n", async ({ cwd, path }) => {
+      const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const bHash = extractHash(getText(readResult).split("\n").find((l: string) => l.includes("│b"))!);
+
+      await editTool.execute(
+        "e1",
+        { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["B"] },
+        undefined, undefined, ctx,
+      );
+      await writeFile(path, "a\nb\nc\nd\n", "utf-8");
+
+      let caught: Error | undefined;
+      try {
+        await editTool.execute(
+          "e2",
+          { path: "sample.ts", remove_from: bHash, remove_to: bHash, replacement_lines: ["B2"] },
+          undefined, undefined, ctx,
+        );
+      } catch (error) {
+        caught = error as Error;
+      }
+      expect(caught).toBeDefined();
+      expect(caught!.message).toMatch(/E_RANGE_STALE/);
+
+      const rows = feedbackRows(caught!.message);
+      const freshB = extractHash(rows.find((r: string) => r.endsWith("│b"))!);
+      expect(freshB).toBe(bHash);
+
+      const retry = await editTool.execute(
+        "e3",
+        { path: "sample.ts", remove_from: freshB, remove_to: freshB, replacement_lines: ["B2"] },
+        undefined, undefined, ctx,
+      );
+      expect(retry.content[0].text).toContain("Successfully replaced");
+      expect(await readFile(path, "utf-8")).toBe("a\nB2\nc\nd\n");
+    });
+  });
 });

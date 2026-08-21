@@ -1,6 +1,6 @@
 import { defineConfig } from "vitest/config";
 
-const mockIsolatedFiles = [
+export const mockIsolatedFiles = [
   "test/core/config-atomic.test.ts",
   "test/core/hash-store-open-errors.test.ts",
   "test/core/validation-access.test.ts",
@@ -9,24 +9,36 @@ const mockIsolatedFiles = [
   "test/tools/fs-write.permissions.test.ts",
 ];
 
-export default defineConfig({
-  test: {
-    projects: [
-      {
-        test: {
-          name: "mock-isolated",
-          include: mockIsolatedFiles,
-          isolate: true,
+export const heavyTestFiles = [
+  "test/core/hashline-stress.test.ts",
+  "test/core/hashline-fuzz-autofix.test.ts",
+  "test/core/hashline-property.test.ts",
+  "test/core/hashline-limit.test.ts",
+  "test/core/hashline-stable-mapping.test.ts",
+];
+
+export function buildTestConfig(extraExcludes: string[] = []) {
+  return defineConfig({
+    test: {
+      projects: [
+        {
+          test: {
+            name: "mock-isolated",
+            include: mockIsolatedFiles,
+            isolate: true,
+          },
         },
-      },
-      {
-        test: {
-          name: "shared",
-          include: ["test/**/*.test.ts"],
-          exclude: mockIsolatedFiles,
-          isolate: false,
+        {
+          test: {
+            name: "shared",
+            include: ["test/**/*.test.ts"],
+            exclude: [...mockIsolatedFiles, ...extraExcludes],
+            isolate: false,
+          },
         },
-      },
-    ],
-  },
-});
+      ],
+    },
+  });
+}
+
+export default buildTestConfig();

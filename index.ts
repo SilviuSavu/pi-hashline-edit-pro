@@ -88,7 +88,7 @@ export default function (pi: ExtensionAPI): void {
           DEFAULT_MAX_BYTES,
           AUTO_READ_MAX,
         );
-        await recordServedSafe(absolutePath, preview.servedHashes, "auto-read");
+        await recordServedSafe(absolutePath, preview.servedHashes, "auto-read", new Set(fileHashes));
         return {
           content: [
             ...(event.content ?? []),

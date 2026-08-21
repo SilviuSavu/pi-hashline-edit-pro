@@ -7,7 +7,7 @@ on:
     branches: [main, master]
 
 jobs:
-  test:
+  unit:
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -37,5 +37,24 @@ jobs:
       - name: Package check
         run: npm pack --dry-run
 
-      - name: Run tests
+      - name: Run unit tests
+        run: npm run test:unit
+
+  full:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run full test suite with coverage
         run: npm run test:coverage

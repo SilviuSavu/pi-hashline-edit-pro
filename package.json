@@ -53,6 +53,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --coverage.thresholds.lines=90 --coverage.thresholds.statements=90 --coverage.thresholds.functions=85 --coverage.thresholds.branches=80",
     "lint": "eslint \"src/**/*.ts\" \"index.ts\" \"test/**/*.ts\"",

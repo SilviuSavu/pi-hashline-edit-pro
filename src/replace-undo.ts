@@ -170,7 +170,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
         try {
           const store = await loadHashStore();
           upsertSnapshot(store, mutationTargetPath, contentChecksum(undo.content), splitLines(undo.content).length, undo.hashes);
-          recordServedDiff(store, mutationTargetPath, undoDiff);
+          recordServedDiff(store, mutationTargetPath, undoDiff, new Set(undo.hashes));
         } catch (error) {
           console.error("Failed to restore hash store snapshot after undo:", error);
         }

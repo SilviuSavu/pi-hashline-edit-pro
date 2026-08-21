@@ -101,6 +101,8 @@ Notes:
 - Every line in the removed range must match what was last shown to you. The extension records the `HASH│content` rows it serves — `read` output, the auto-read block after `write`, the `+HASH│`/` HASH│` rows of post-edit diffs (replace and undo), the current-range rows of `[E_RANGE_STALE]` feedback, and the context rows of stale/ambiguous-anchor feedback — and verifies the whole range against that record before writing. If an interior line changed on disk since it was shown (external editor, formatter-on-save, code generation) or was never shown, the edit is refused with `[E_RANGE_STALE]` and the current range is returned with fresh anchors, so the retry needs no `read`. Edits outside the served record are only possible for files that were never read (for example right after a `write` with auto-read disabled); once the file has been served, every replaced line must have been shown.
 - After a successful edit you get the post-edit diff with fresh anchors, so you can keep editing without re-reading.
 - Do not issue multiple replace calls on the same file in one message; parallel edits split attention across the post-edit diffs and removed lines are easy to miss. Verify each diff before the next edit on that file.
+- Line endings and BOMs survive every edit. The file's line ending is detected from its first newline and restored on write; a file that mixes LF and CRLF (for example a WSL-edited file) is normalized to the first-seen ending.
+- Files with multiple hard links (`nlink > 1`) are rewritten in place rather than via a temp-file rename, so every link keeps seeing the same content; that write is direct rather than atomic.
 
 ## Undo
 
@@ -119,6 +121,14 @@ Enabled by default. After a successful `write` that changes the file, the extens
 - After `replace` and `undo_last_replace`, the result shows the post-edit diff. The `+HASH│` and ` HASH│` rows carry the current hashes, so follow-up edits can anchor on the diff directly. The `-HASH│` rows show removed lines with their old hashes, so you can see exactly which anchors were deleted (those hashes are stale after the edit). Call `read` when you want the full file's anchors.
 - Auto-read keeps a 50KB display budget. Lines over 50KB are skipped with a marker instead of their content (use `read` for lines up to 200KB).
 - Toggle at runtime with `/toggle-auto-read`; the setting persists across sessions.
+
+## Tool result details
+
+All three tools return machine-readable metadata in `details` alongside the model-visible text:
+
+- `read`: `details.truncation` (set when the output was truncated), `details.snapshotId` (a `v2|path|ino|mtime|ctime|size` fingerprint of the file), `details.nextOffset` (use as the next `offset`), and `details.metrics` with `truncated` and `next_offset`.
+- `replace`: `details.diff` (the post-edit diff; `+HASH│` and ` HASH│` rows carry the current anchors), `details.firstChangedLine`, `details.snapshotId`, `details.classification` (`"noop"` when nothing changed), and `details.metrics`: `edits_attempted`, `edits_noop`, `warnings`, `classification` (`"applied"` or `"noop"`), `changed_lines` (`{ first, last }`), `added_lines`, `removed_lines`.
+- `undo_last_replace`: `details.diff` (the undo diff with the restored anchors) and `details.metrics` (same shape as `replace`).
 
 ## Settings
 
@@ -144,7 +154,7 @@ Unique anchors by construction. If a line's base hash collides with an already-a
 
 Hashes live in a persistent per-file store (`~/.config/pi-hashline-edit-pro/hash-store.sqlite`) that keeps the hashes of unchanged lines across edits. When a range is replaced, the runtime maps the old content onto the new content and copies hashes for lines that survived; only genuinely new lines get fresh hashes.
 
-The store also keeps a per-file record of the hashes the model was last served (`read` rows, auto-read blocks, post-edit diff rows). `replace` verifies every line of the resolved range against that record before writing; a line whose hash was never served means it either changed on disk after it was shown or was never shown, and the edit is refused with `[E_RANGE_STALE]`. A `write` clears the record, so edits after a write are verified against whatever the next `read` or auto-read block serves.
+The store also keeps a per-file record of the hashes the model was last served (`read` rows, auto-read blocks, post-edit diff rows), pruned to the file's current hashes on every update so removed lines' hashes do not accumulate. `replace` verifies every line of the resolved range against that record before writing; a line whose hash is missing from the record means it either changed on disk after it was shown or was never shown, and the edit is refused with `[E_RANGE_STALE]`. A `write` clears the record, so edits after a write are verified against whatever the next `read` or auto-read block serves.
 
 Two guarantees make this safe even with duplicated content:
 

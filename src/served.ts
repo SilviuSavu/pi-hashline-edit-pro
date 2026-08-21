@@ -20,22 +20,41 @@ export function getServed(store: HashStore, path: string): Set<string> | undefin
   return new Set(parsed);
 }
 
-export function recordServed(store: HashStore, path: string, hashes: string[]): void {
-  if (hashes.length === 0) return;
-  const existing = getServed(store, path) ?? new Set<string>();
+export function recordServed(
+  store: HashStore,
+  path: string,
+  hashes: string[],
+  scope?: ReadonlySet<string>,
+): void {
+  const existing = getServed(store, path);
+  if (!existing && hashes.length === 0) return;
+  const set = existing ?? new Set<string>();
   let changed = false;
+  if (scope) {
+    for (const hash of set) {
+      if (!scope.has(hash)) {
+        set.delete(hash);
+        changed = true;
+      }
+    }
+  }
   for (const hash of hashes) {
-    if (!existing.has(hash)) {
-      existing.add(hash);
+    if (!set.has(hash)) {
+      set.add(hash);
       changed = true;
     }
   }
   if (!changed) return;
-  store.stmts.servedUpsert(path, JSON.stringify([...existing]), Date.now());
+  store.stmts.servedUpsert(path, JSON.stringify([...set]), Date.now());
 }
 
-export function recordServedDiff(store: HashStore, path: string, diff: string): void {
-  recordServed(store, path, servedHashesFromDiff(diff));
+export function recordServedDiff(
+  store: HashStore,
+  path: string,
+  diff: string,
+  scope?: ReadonlySet<string>,
+): void {
+  recordServed(store, path, servedHashesFromDiff(diff), scope);
 }
 
 export function clearServed(store: HashStore, path: string): void {
@@ -46,11 +65,12 @@ export async function recordServedSafe(
   path: string,
   hashes: string[],
   context: string,
+  scope?: ReadonlySet<string>,
 ): Promise<void> {
-  if (hashes.length === 0) return;
+  if (hashes.length === 0 && !scope) return;
   try {
     const store = await loadHashStore();
-    recordServed(store, path, hashes);
+    recordServed(store, path, hashes, scope);
   } catch (error) {
     console.error(`Failed to record served state (${context}):`, error);
   }
@@ -60,7 +80,8 @@ export async function recordServedDiffSafe(
   path: string,
   diff: string,
   context: string,
+  scope?: ReadonlySet<string>,
 ): Promise<void> {
   if (!diff) return;
-  await recordServedSafe(path, servedHashesFromDiff(diff), context);
+  await recordServedSafe(path, servedHashesFromDiff(diff), context, scope);
 }
