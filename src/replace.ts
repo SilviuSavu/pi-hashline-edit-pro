@@ -106,7 +106,6 @@ interface PipelineResult {
   lastChangedLine?: number;
   originalHashes: string[];
   resultHashes: string[];
-  noopBounds?: [string, string];
   totalAddedLines: number;
   totalRemovedLines: number;
   hadBoundaryDedup: boolean;
@@ -284,9 +283,6 @@ export async function execPipeline(
         removedHashes,
       }, hashStore, noPersist !== true);
   const warnings = [...editWarnings, ...(anchorResult.warnings ?? [])];
-  const noopBounds = isNoop
-    ? [edit.hash_bounds[0].hash, edit.hash_bounds[1].hash] as [string, string]
-    : undefined;
   const { totalAddedLines, totalRemovedLines } = countLineChanges(
     edit, originalHashes, isNoop, anchorResult.autoFixes?.length ?? 0,
   );
@@ -304,7 +300,6 @@ export async function execPipeline(
     lastChangedLine: anchorResult.lastChangedLine,
     resultHashes,
     originalHashes,
-    noopBounds,
     totalAddedLines,
     totalRemovedLines,
     hadBoundaryDedup: (anchorResult.autoFixes?.length ?? 0) > 0,
@@ -504,7 +499,6 @@ export function buildToolDef(): ToolDef {
           firstChangedLine,
           lastChangedLine,
           resultHashes,
-          noopBounds,
           hadBoundaryDedup,
           totalAddedLines,
           totalRemovedLines,

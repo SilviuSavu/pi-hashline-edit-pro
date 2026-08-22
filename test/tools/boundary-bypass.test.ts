@@ -7,7 +7,6 @@ import {
   withTempFile,
   setupIntegrationTest,
   getText,
-  extractHash,
 } from "../support/fixtures";
 
 const NOOP_LINE_1 = "bbb";
