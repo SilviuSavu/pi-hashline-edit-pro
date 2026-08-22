@@ -9,4 +9,6 @@ export const ALPH_RE = new RegExp(`^[${ALPH_SAFE}]+$`);
 
 export const HASH_CLASS = `[${ALPH_SAFE}]{${HASH_LEN}}`;
 
+export const HASH_RUN = `[${ALPH_SAFE}]{1,${HASH_LEN * 2}}`;
+
 export const HASH_RE = new RegExp(`^${HASH_CLASS}$`);

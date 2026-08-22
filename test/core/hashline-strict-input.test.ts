@@ -268,3 +268,91 @@ describe("diff-prefix false-positive guards (tightened shapes)", () => {
 		expect(result.warnings?.[0]).toMatch(/stripped diff-preview marker/);
 	});
 });
+
+describe("truncated hash prefixes copied into content (issue #27)", () => {
+	const file = "alpha\nbeta\ngamma\ndelta";
+
+	function applyTool(toolEdit: HTEdit, precomputedHashes?: string[]) {
+		return applyEdit(file, resEdit(toolEdit), undefined, precomputedHashes);
+	}
+
+	it("strips a 2-char prefix copied from read output", async () => {
+		const hashes = await lineHashes(file, home.testPath);
+		const anchor = hashes[0]!;
+		const result = applyTool(
+			{ remove_from: anchor,
+			remove_to: anchor, replacement_lines: ["L3│                        }"] },
+			hashes);
+		expect(result.content).toBe("                        }\nbeta\ngamma\ndelta");
+		expect(result.content).not.toContain("│");
+		expect(result.warnings?.[0]).toMatch(/stripped "HASH│" prefix/);
+		expect(result.warnings?.[0]).toMatch(/none of the stripped hashes match current file lines/);
+	});
+
+	it("strips a 1-char prefix pasted from read output", async () => {
+		const hashes = await lineHashes(file, home.testPath);
+		const anchor = hashes[0]!;
+		const result = applyTool(
+			{ remove_from: anchor,
+			remove_to: anchor, replacement_lines: ["a│one"] },
+			hashes);
+		expect(result.content).toBe("one\nbeta\ngamma\ndelta");
+		expect(result.warnings?.[0]).toMatch(/stripped "HASH│" prefix/);
+	});
+
+	it("strips truncated +HASH│ and -HASH│ diff rows with warning", async () => {
+		const hashes = await lineHashes(file, home.testPath);
+		const anchor = hashes[0]!;
+		const result = applyTool(
+			{ remove_from: anchor,
+			remove_to: anchor, replacement_lines: ["+L3│one", "-L3│two"] },
+			hashes);
+		expect(result.content).toBe("one\ntwo\nbeta\ngamma\ndelta");
+		expect(result.warnings?.[0]).toMatch(/stripped diff-preview marker/);
+	});
+
+	it("strips a 4-char prefix pasted from read output", async () => {
+		const hashes = await lineHashes(file, home.testPath);
+		const anchor = hashes[0]!;
+		const result = applyTool(
+			{ remove_from: anchor,
+			remove_to: anchor, replacement_lines: ["abcd│literal"] },
+			hashes);
+		expect(result.content).toBe("literal\nbeta\ngamma\ndelta");
+		expect(result.warnings?.[0]).toMatch(/stripped "HASH│" prefix/);
+		expect(result.warnings?.[0]).toMatch(/none of the stripped hashes match current file lines/);
+	});
+
+	it("leaves a 7-char run before the separator as literal content", async () => {
+		const hashes = await lineHashes(file, home.testPath);
+		const anchor = hashes[0]!;
+		const result = applyTool(
+			{ remove_from: anchor,
+			remove_to: anchor, replacement_lines: ["abcdefg│literal"] },
+			hashes);
+		expect(result.content).toBe("abcdefg│literal\nbeta\ngamma\ndelta");
+		expect(result.warnings ?? []).toEqual([]);
+	});
+
+	it("leaves a run followed by a space before the separator untouched", async () => {
+		const hashes = await lineHashes(file, home.testPath);
+		const anchor = hashes[0]!;
+		const result = applyTool(
+			{ remove_from: anchor,
+			remove_to: anchor, replacement_lines: ["L3 │literal"] },
+			hashes);
+		expect(result.content).toBe("L3 │literal\nbeta\ngamma\ndelta");
+		expect(result.warnings ?? []).toEqual([]);
+	});
+
+	it("strips a truncated row prefix pasted into remove_from/remove_to", () => {
+		const warnings: string[] = [];
+		expect(() =>
+			resEdit(
+				{ remove_from: "L3│   }", remove_to: "L3│   }", replacement_lines: ["x"] },
+				warnings,
+			),
+		).toThrow(/E_BAD_REF/);
+		expect(warnings[0]).toMatch(/stripped "HASH│" prefix/);
+	});
+});

@@ -6,8 +6,8 @@ import {
   upsertSnapshot,
 } from "../hash-store";
 import { xxh32, contentChecksum, initHasher } from "./hasher";
-import { HASH_LEN, ALPH, ALPH_RE, HASH_CLASS } from "./alphabet";
-export { initHasher, HASH_LEN, ALPH_RE, HASH_CLASS };
+import { HASH_LEN, ALPH, ALPH_RE, HASH_CLASS, HASH_RUN } from "./alphabet";
+export { initHasher, HASH_LEN, ALPH_RE, HASH_CLASS, HASH_RUN };
 
 export const ANCHOR_LEN = HASH_LEN;
 
@@ -39,13 +39,13 @@ function hashAt(idx: number): string {
 }
 
 export const HL_PREFIX_PLUS_RE = new RegExp(
-	`^\\+${HASH_CLASS}│`,
+	`^\\+${HASH_RUN}│`,
 );
 export const HL_PREFIX_MINUS_RE = new RegExp(
-	`^-(?:${HASH_CLASS}│| {${ANCHOR_LEN}}│)`,
+	`^-(?:${HASH_RUN}│| {${ANCHOR_LEN}}│)`,
 );
 
-export const HL_BARE_PREFIX_RE = new RegExp(`^\\s*(${HASH_CLASS})│`);
+export const HL_BARE_PREFIX_RE = new RegExp(`^\\s*(${HASH_RUN})│`);
 
 export function canon(line: string): string {
 	return line.replace(/\r/g, "").trimEnd();
