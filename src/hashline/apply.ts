@@ -147,6 +147,7 @@ export function applyEdit(
 	precomputedHashes?: string[],
 	filePath?: string,
 	servedHashes?: ReadonlySet<string>,
+	skipBoundaryDedup?: boolean,
 	): {
 	content: string;
 	firstChangedLine: number | undefined;
@@ -188,7 +189,7 @@ export function applyEdit(
 
 	let resolved = initialResolved;
 	let autoFixes: AutoFix[] | undefined;
-	if (boundaryDups.length > 0) {
+	if (boundaryDups.length > 0 && !skipBoundaryDedup) {
 		autoFixes = [];
 		const correctedEdit: HEdit = {
 			...prefixFixed,
@@ -241,6 +242,7 @@ export function applyEdit(
 			firstChangedLine: undefined,
 			lastChangedLine: undefined,
 			...(warnings.length ? { warnings } : {}),
+			...(autoFixes ? { autoFixes } : {}),
 			noopEdit: { loc: spanResult.loc, currentContent: spanResult.currentContent },
 		};
 	}

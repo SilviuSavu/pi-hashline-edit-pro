@@ -296,7 +296,8 @@ resEdit(
     expect(result.content).toBe(content);
     expect(result.noopEdit).toBeDefined();
     expect(result.warnings).toBeUndefined();
-    expect(result.autoFixes).toBeUndefined();
+    expect(result.autoFixes).toHaveLength(2);
+    expect(result.autoFixes!.map((f) => f.kind)).toEqual(["first-new-after", "first-new-after"]);
   });
 
   it("strips a new line duplicating a unique line before the range (noop)", async () => {
@@ -308,7 +309,8 @@ resEdit(
     ));
     expect(result.content).toBe(content);
     expect(result.noopEdit).toBeDefined();
-    expect(result.autoFixes).toBeUndefined();
+    expect(result.autoFixes).toHaveLength(1);
+    expect(result.autoFixes![0]!.kind).toBe("last-new-before");
   });
 
   it("does not strip new-line duplicates when the adjacent line is not unique in the file", async () => {

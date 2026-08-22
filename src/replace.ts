@@ -47,6 +47,7 @@ import { loadP, loadGuide } from "./prompts";
 import { saveUndo } from "./replace-undo";
 import { loadHashStore, findSnapshotPaths, type HashStore } from "./hash-store";
 import { getServed, recordServedSafe, recordServedDiffSafe } from "./served";
+import { noopPayloadKey, markBoundaryNoop, consumeBoundaryBypass, clearBoundaryBypass } from "./boundary-bypass";
 
 const replacementLinesSchema = Type.Array(
   Type.String({
@@ -105,8 +106,10 @@ interface PipelineResult {
   lastChangedLine?: number;
   originalHashes: string[];
   resultHashes: string[];
+  noopBounds?: [string, string];
   totalAddedLines: number;
   totalRemovedLines: number;
+  hadBoundaryDedup: boolean;
 }
 
 const PREVIEW_DEBOUNCE_MS = 150;
@@ -179,6 +182,7 @@ export interface ExecPipelineOptions {
   signal?: AbortSignal;
   store?: HashStore;
   noPersist?: boolean;
+  skipBoundaryDedup?: boolean;
 }
 
 function collectRemovedHashes(
@@ -252,6 +256,7 @@ export async function execPipeline(
       originalHashes,
       path,
       served,
+      options?.skipBoundaryDedup,
     );
   } catch (error) {
     if (options?.noPersist !== true) {
@@ -279,6 +284,9 @@ export async function execPipeline(
         removedHashes,
       }, hashStore, noPersist !== true);
   const warnings = [...editWarnings, ...(anchorResult.warnings ?? [])];
+  const noopBounds = isNoop
+    ? [edit.hash_bounds[0].hash, edit.hash_bounds[1].hash] as [string, string]
+    : undefined;
   const { totalAddedLines, totalRemovedLines } = countLineChanges(
     edit, originalHashes, isNoop, anchorResult.autoFixes?.length ?? 0,
   );
@@ -296,8 +304,10 @@ export async function execPipeline(
     lastChangedLine: anchorResult.lastChangedLine,
     resultHashes,
     originalHashes,
+    noopBounds,
     totalAddedLines,
     totalRemovedLines,
+    hadBoundaryDedup: (anchorResult.autoFixes?.length ?? 0) > 0,
   };
 }
 
@@ -477,6 +487,8 @@ export function buildToolDef(): ToolDef {
       const path = normalizedParams.path;
       const absolutePath = toCwd(path, ctx.cwd);
       const mutationTargetPath = await resolveTarget(absolutePath);
+      const noopPayload = noopPayloadKey(mutationTargetPath, normalizedParams.remove_from, normalizedParams.remove_to, normalizedParams.replacement_lines);
+      const boundaryBypass = consumeBoundaryBypass(mutationTargetPath, noopPayload);
       return withFileMutationQueue(mutationTargetPath, async () => {
         abortIf(signal);
 
@@ -492,21 +504,29 @@ export function buildToolDef(): ToolDef {
           firstChangedLine,
           lastChangedLine,
           resultHashes,
+          noopBounds,
+          hadBoundaryDedup,
           totalAddedLines,
           totalRemovedLines,
         } = await execPipeline(
           normalizedParams,
           ctx.cwd,
-          { accessMode: constants.R_OK | constants.W_OK, signal },
+          { accessMode: constants.R_OK | constants.W_OK, signal, skipBoundaryDedup: boundaryBypass },
         );
 
         if (resolution) {
           warnings.unshift(resolution.warning);
         }
+        if (boundaryBypass && originalNormalized !== result) {
+          warnings.push("[E_BOUNDARY_BYPASS] Boundary dedup was off for this call. Boundary dedup is now restored.");
+        }
 
         const editsAttempted = 1;
         if (originalNormalized === result) {
           const noopSnapshotId = await safeSnapId(absolutePath, "noop edit");
+          if (hadBoundaryDedup) {
+            markBoundaryNoop(mutationTargetPath, noopPayload);
+          }
           return buildNoop({
             path,
             noopEdit,
@@ -550,6 +570,7 @@ export function buildToolDef(): ToolDef {
           await undo.restore();
           throw error;
         }
+        clearBoundaryBypass(mutationTargetPath);
         const updatedSnapshotId = await safeSnapId(absolutePath, "post-edit");
 
         const editMeta: RMeta = {
