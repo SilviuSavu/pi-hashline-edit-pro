@@ -27,7 +27,7 @@ beforeAll(async () => {
   await initHasher();
 });
 
-describe("hash-store — undo entries", () => {
+describe("hash-store - undo entries", () => {
   it("round-trips an undo entry", async () => {
     await withTempHome(async () => {
       const store = await loadHashStore();
@@ -176,7 +176,7 @@ async function writeLegacyStore(home: string, snapshots: unknown): Promise<void>
   await writeFile(legacyPath(home), JSON.stringify({ version: 1, snapshots }), "utf-8");
 }
 
-describe("hash-store — loadHashStore", () => {
+describe("hash-store - loadHashStore", () => {
   it("opens a fresh sqlite database when none exists", async () => {
     await withTempHome(async (home) => {
       const store = await loadHashStore();
@@ -194,7 +194,7 @@ describe("hash-store — loadHashStore", () => {
   });
 });
 
-describe("hash-store — snapshot get / upsert / delete", () => {
+describe("hash-store - snapshot get / upsert / delete", () => {
   it("round-trips a snapshot by path and content matching checksum", async () => {
     await withTempHome(async () => {
       const store = await loadHashStore();
@@ -241,7 +241,7 @@ describe("hash-store — snapshot get / upsert / delete", () => {
   });
 });
 
-describe("hash-store — corrupt row handling", () => {
+describe("hash-store - corrupt row handling", () => {
   async function corruptHashes(home: string, path: string, value: string): Promise<void> {
     const db = new DatabaseSync(sqlitePath(home), { defensive: false } as any);
     db.prepare("UPDATE snapshots SET hashes = ? WHERE path = ?").run(value, path);
@@ -288,7 +288,7 @@ describe("hash-store — corrupt row handling", () => {
   });
 });
 
-describe("hash-store — migration from legacy hash-store.json", () => {
+describe("hash-store - migration from legacy hash-store.json", () => {
   it("imports valid legacy snapshots and renames the file to .bak", async () => {
     await withTempHome(async (home) => {
       await writeLegacyStore(home, {
@@ -416,7 +416,7 @@ describe("hash-store — migration from legacy hash-store.json", () => {
   });
 });
 
-describe("hash-store — pruneMissing", () => {
+describe("hash-store - pruneMissing", () => {
   it("removes snapshots for files that no longer exist", async () => {
     await withTempHome(async () => {
       const store = await loadHashStore();
@@ -518,7 +518,7 @@ describe("hash-store — pruneMissing", () => {
   });
 });
 
-describe("hash-store — concurrency (issue #10)", () => {
+describe("hash-store - concurrency (issue #10)", () => {
   it("preserves snapshots written by a separately-opened connection", async () => {
     await withTempHome(async (home) => {
       const store = await loadHashStore();
@@ -556,7 +556,7 @@ describe("hash-store — concurrency (issue #10)", () => {
   });
 });
 
-describe("hash-store — incremental writes (issue #8)", () => {
+describe("hash-store - incremental writes (issue #8)", () => {
   it("upserting a new path does not alter an existing path's stored hashes", async () => {
     await withTempHome(async () => {
       const store = await loadHashStore();
@@ -572,7 +572,7 @@ describe("hash-store — incremental writes (issue #8)", () => {
   });
 });
 
-describe("hash-store — WAL checkpoint on shutdown", () => {
+describe("hash-store - WAL checkpoint on shutdown", () => {
   it("truncates the WAL file after shutdownHashStore", async () => {
     await withTempHome(async (home) => {
       const store = await loadHashStore();
@@ -588,7 +588,7 @@ describe("hash-store — WAL checkpoint on shutdown", () => {
   });
 });
 
-describe("hash-store — corrupt database recovery", () => {
+describe("hash-store - corrupt database recovery", () => {
   it("rebuilds the store when the database file is corrupt", async () => {
     await withTempHome(async (home) => {
       await mkdir(configHome(home), { recursive: true });
@@ -626,7 +626,7 @@ describe("hash-store — corrupt database recovery", () => {
   });
 });
 
-describe("hash-store — schema versioning", () => {
+describe("hash-store - schema versioning", () => {
   it("writes the current version on first open", async () => {
     await withTempHome(async (home) => {
       const store = await loadHashStore();
@@ -701,7 +701,7 @@ describe("hash-store — schema versioning", () => {
   });
 });
 
-describe("hash-store — isValidHashList", () => {
+describe("hash-store - isValidHashList", () => {
   it("accepts a unique list of valid hashes", () => {
     expect(isValidHashList(["aB3", "xY7", "Zz9"])).toBe(true);
     expect(isValidHashList([])).toBe(true);
@@ -720,7 +720,7 @@ describe("hash-store — isValidHashList", () => {
   });
 });
 
-describe("hash-store — snapshot cache", () => {
+describe("hash-store - snapshot cache", () => {
   it("serves repeated reads from memory without touching the database", async () => {
     await withTempHome(async () => {
       const store = await loadHashStore();

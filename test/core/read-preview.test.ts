@@ -128,7 +128,7 @@ describe("fmtReadPreview", () => {
   });
 });
 
-describe("fmtReadPreview — oversized marker truncation", () => {
+describe("fmtReadPreview - oversized marker truncation", () => {
   it("continues past a truncated marker list without skipping hidden rows", async () => {
     const big1 = "X".repeat(1000);
     const big2 = "Y".repeat(1000);
@@ -150,7 +150,7 @@ describe("fmtReadPreview — oversized marker truncation", () => {
   });
 });
 
-describe("fmtReadPreview — maxTruncLines budget", () => {
+describe("fmtReadPreview - maxTruncLines budget", () => {
   it("caps truncated output lines via maxTruncLines", async () => {
     const content = ["l1", "l2", "l3", "l4", "l5"].join("\n") + "\n";
     const result = await fmtReadPreview(content, {}, undefined, home.testPath, undefined, 3);

@@ -11,7 +11,7 @@ async function makeTempDir(): Promise<string> {
   return mkdtemp(join(root, "pi-hashline-perm-"));
 }
 
-describe.skipIf(isWindows)("writeAtomic — new-file mode", () => {
+describe.skipIf(isWindows)("writeAtomic - new-file mode", () => {
   it("creates a new file with mode 0o600 (owner-only), independent of umask", async () => {
 
     const dir = await makeTempDir();

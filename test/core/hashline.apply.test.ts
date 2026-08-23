@@ -8,7 +8,7 @@ import { makeTag, useTestHome } from "../support/fixtures";
 
 const home = useTestHome();
 
-describe("applyEdit — basic operations", () => {
+describe("applyEdit - basic operations", () => {
 	it("replaces a single line", async () => {
 		const content = "aaa\nbbb\nccc";
 		const edit: HEdit = { hash_bounds: [await makeTag(content, 2, home.testPath), await makeTag(content, 2, home.testPath)], content_lines: ["BBB"] };
@@ -77,7 +77,7 @@ describe("applyEdit — basic operations", () => {
 	});
 });
 
-describe("applyEdit — noop detection", () => {
+describe("applyEdit - noop detection", () => {
 	it("detects single-line noop", async () => {
 		const content = "aaa\nbbb\nccc";
 		const tag = await makeTag(content, 2, home.testPath);
@@ -130,7 +130,7 @@ describe("applyEdit — noop detection", () => {
 	});
 });
 
-describe("applyEdit — auto-fix heuristics", () => {
+describe("applyEdit - auto-fix heuristics", () => {
 	it("auto-fixes leading duplication by stripping the first replacement line", async () => {
 		const content = "before\nold one\nold two\nafter";
 		const edit: HEdit = {
@@ -162,7 +162,7 @@ describe("applyEdit — auto-fix heuristics", () => {
 	});
 });
 
-describe("applyEdit — lastChangedLine tracking", () => {
+describe("applyEdit - lastChangedLine tracking", () => {
 	it("tracks lastChangedLine when single-line replace expands to multiple lines", async () => {
 		const content = "aaa\nbbb\nccc";
 		const edit: HEdit = {
@@ -199,7 +199,7 @@ describe("applyEdit — lastChangedLine tracking", () => {
 	});
 });
 
-describe("applyEdit — edge cases (empty, single-line, no trailing newline)", () => {
+describe("applyEdit - edge cases (empty, single-line, no trailing newline)", () => {
 	it("edits a single-line file without trailing newline", async () => {
 		const content = "hello";
 		const edit: HEdit = { hash_bounds: [await makeTag(content, 1, home.testPath), await makeTag(content, 1, home.testPath)], content_lines: ["world"] };
@@ -242,7 +242,7 @@ describe("applyEdit — edge cases (empty, single-line, no trailing newline)", (
 	});
 });
 
-describe("applyEdit — trailing newline preservation", () => {
+describe("applyEdit - trailing newline preservation", () => {
 	it("preserves trailing newline when replacing the last line of a file with one", async () => {
 		const content = "line1\n</br>\n";
 		const edit: HEdit = { hash_bounds: [await makeTag(content, 1, home.testPath), await makeTag(content, 1, home.testPath)], content_lines: ["LINE1"] };
@@ -279,7 +279,7 @@ describe("applyEdit — trailing newline preservation", () => {
 	});
 });
 
-describe("applyEdit — deletion and range matrix", () => {
+describe("applyEdit - deletion and range matrix", () => {
 	const cases = [
 		{
 			name: "delete first line with trailing newline",
@@ -389,7 +389,7 @@ describe("applyEdit — deletion and range matrix", () => {
 	}
 });
 
-describe("applyEdit — EOF deletion preserves an empty preceding line", () => {
+describe("applyEdit - EOF deletion preserves an empty preceding line", () => {
   it("keeps an empty line before a deleted last line without trailing newline", async () => {
     const content = "a\n\nb";
     const edit: HEdit = {
@@ -441,7 +441,7 @@ describe("applyEdit — EOF deletion preserves an empty preceding line", () => {
   });
 });
 
-describe("applyEdit — trailing blank lines (no trailing-newline special case)", () => {
+describe("applyEdit - trailing blank lines (no trailing-newline special case)", () => {
   it("preserves a trailing blank line when replacement_lines mirror it with a trailing empty element", async () => {
     const content = "def a():\n    pass\n\ndef b():\n    pass\n";
     const edit = resEdit({
@@ -487,7 +487,7 @@ describe("applyEdit — trailing blank lines (no trailing-newline special case)"
   });
 });
 
-describe("applyEdit — trailing blank at EOF without trailing newline", () => {
+describe("applyEdit - trailing blank at EOF without trailing newline", () => {
   it('keeps [""] as a blank line when replacing the last line', async () => {
     const content = "aaa\nbbb";
     const edit = resEdit({

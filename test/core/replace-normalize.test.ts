@@ -62,7 +62,7 @@ describe("normReq", () => {
 	});
 });
 
-describe("normReq — top-level shape", () => {
+describe("normReq - top-level shape", () => {
 	it("keeps remove_from/remove_to and replacement_lines at top level", () => {
 		const input = {
 			path: "test.txt",

@@ -52,7 +52,7 @@ import { noopPayloadKey, markBoundaryNoop, consumeBoundaryBypass, clearBoundaryB
 const replacementLinesSchema = Type.Array(
   Type.String({
     description:
-      "One replacement line. Each element is exactly one line; do not embed \\n inside an element — use separate elements.",
+      "One replacement line. Each element is exactly one line; do not embed \\n inside an element: use separate elements.",
   }),
   {
     description:
@@ -61,16 +61,16 @@ const replacementLinesSchema = Type.Array(
 );
 
 const removeFromSchema = Type.String({
-  description: "Bare 3-char HASH only (e.g. \"aB3\") — copy just the hash from the leftmost column of a read row like `aB3│content`; never the line content. Marks the FIRST line to remove (inclusive)",
+  description: "Bare 3-char HASH only (e.g. \"aB3\"): copy just the hash from the leftmost column of a read row like `aB3│content`; never the line content. Marks the FIRST line to remove (inclusive)",
 });
 
 const removeToSchema = Type.String({
-  description: "Bare 3-char HASH only (e.g. \"aB3\") — copy just the hash from the leftmost column of a read row like `aB3│content`; never the line content. Marks the LAST line to remove (inclusive)",
+  description: "Bare 3-char HASH only (e.g. \"aB3\"): copy just the hash from the leftmost column of a read row like `aB3│content`; never the line content. Marks the LAST line to remove (inclusive)",
 });
 
 export const editToolSchema = Type.Object(
   {
-    path: Type.Optional(Type.String({ description: "Path to edit. Required — always provide it explicitly; it is only auto-resolved from the anchors as a fallback when omitted by mistake." })),
+    path: Type.Optional(Type.String({ description: "Path to edit. Required: always provide it explicitly; it is only auto-resolved from the anchors as a fallback when omitted by mistake." })),
     remove_from: removeFromSchema,
     remove_to: removeToSchema,
     replacement_lines: replacementLinesSchema,

@@ -4,7 +4,7 @@ import { join } from "path";
 import { lineHashes } from "../../src/hashline";
 import { withTempFile, withTempDir, setupIntegrationTest } from "../support/fixtures";
 
-describe("replace — missing path resolution", () => {
+describe("replace - missing path resolution", () => {
   it("resolves a missing path when the anchors uniquely identify a file", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\n", async ({ cwd, path }) => {
       const { ctx, editTool } = setupIntegrationTest(cwd);

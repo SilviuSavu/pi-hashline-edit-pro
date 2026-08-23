@@ -11,7 +11,7 @@ import { resolveTarget, writeAtomic } from "../../src/fs-write";
 import { withTempDir } from "../support/fixtures";
 
 
-describe.skipIf(process.platform === "win32")("resolveTarget — file symlinks", () => {
+describe.skipIf(process.platform === "win32")("resolveTarget - file symlinks", () => {
   it("resolves a path where the final component is a symlink to a file", async () => {
     await withTempDir("fs-write-edge-", async (dir) => {
       const realFile = join(dir, "real.txt");
@@ -24,7 +24,7 @@ describe.skipIf(process.platform === "win32")("resolveTarget — file symlinks",
   });
 });
 
-describe.skipIf(process.platform === "win32")("resolveTarget — relative and .. symlink targets", () => {
+describe.skipIf(process.platform === "win32")("resolveTarget - relative and .. symlink targets", () => {
   it("resolves a symlink with a relative target (same directory)", async () => {
     await withTempDir("fs-write-edge-", async (dir) => {
       const realFile = join(dir, "real.txt");
@@ -63,7 +63,7 @@ describe.skipIf(process.platform === "win32")("resolveTarget — relative and ..
   });
 });
 
-describe("resolveTarget — path edge cases", () => {
+describe("resolveTarget - path edge cases", () => {
   it.skipIf(process.platform === "win32")("resolves root path /", async () => {
     const resolved = await resolveTarget("/");
     expect(resolved).toBe("/");
@@ -129,7 +129,7 @@ describe("resolveTarget — path edge cases", () => {
 });
 
 
-describe.skipIf(process.platform === "win32")("writeAtomic — file symlink target", () => {
+describe.skipIf(process.platform === "win32")("writeAtomic - file symlink target", () => {
   it("writes through a file symlink (final component is a symlink)", async () => {
     await withTempDir("fs-write-edge-", async (dir) => {
       const realFile = join(dir, "real.txt");
@@ -157,7 +157,7 @@ describe.skipIf(process.platform === "win32")("writeAtomic — file symlink targ
   });
 });
 
-describe("writeAtomic — hard-linked file edge cases", () => {
+describe("writeAtomic - hard-linked file edge cases", () => {
   it("writes to a hard-linked file in-place when nlink > 1", async () => {
     await withTempDir("fs-write-edge-", async (dir) => {
       const { link } = await import("fs/promises");
@@ -186,7 +186,7 @@ describe("writeAtomic — hard-linked file edge cases", () => {
   });
 });
 
-describe.skipIf(process.platform === "win32")("writeAtomic — directory symlink target", () => {
+describe.skipIf(process.platform === "win32")("writeAtomic - directory symlink target", () => {
   it("creates a new file inside a directory reached through a symlink", async () => {
     await withTempDir("fs-write-edge-", async (dir) => {
       const realDir = join(dir, "real");
@@ -201,7 +201,7 @@ describe.skipIf(process.platform === "win32")("writeAtomic — directory symlink
   });
 });
 
-describe("writeAtomic — large and binary content", () => {
+describe("writeAtomic - large and binary content", () => {
   it("writes a large file", async () => {
     await withTempDir("fs-write-edge-", async (dir) => {
       const filePath = join(dir, "large.txt");
@@ -225,7 +225,7 @@ describe("writeAtomic — large and binary content", () => {
   });
 });
 
-describe("writeAtomic — stale temp file sweep", () => {
+describe("writeAtomic - stale temp file sweep", () => {
   it("removes its own stale UUID temp files but never user files with a .tmp- prefix", async () => {
     await withTempDir("fs-write-sweep-", async (dir) => {
       const stale = join(dir, ".tmp-12345678-1234-1234-1234-123456789abc");

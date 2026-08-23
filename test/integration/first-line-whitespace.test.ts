@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFile } from "fs/promises";
 import { withTempFile, setupIntegrationTest, getText, extractHash } from "../support/fixtures";
 
-describe("replace tool — first-line whitespace preservation", () => {
+describe("replace tool - first-line whitespace preservation", () => {
   it("preserves leading whitespace on the first line of the replacement (LF file)", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd, path }) => {
       const { ctx, readTool, editTool } = setupIntegrationTest(cwd);

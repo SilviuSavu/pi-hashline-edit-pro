@@ -109,7 +109,7 @@ function randInt(rnd: () => number, min: number, max: number): number {
   return min + Math.floor(rnd() * (max - min + 1));
 }
 
-describe("genDiff — property: column alignment", () => {
+describe("genDiff - property: column alignment", () => {
   const vocab = [
     "",
     "}",

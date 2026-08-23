@@ -12,7 +12,7 @@ function errWithCode(code: string, message: string): NodeJS.ErrnoException {
   return err;
 }
 
-describe("valAccess — error mapping", () => {
+describe("valAccess - error mapping", () => {
   it("maps ELOOP to an [E_ACCESS] symlink-loop error", async () => {
     const { valAccess } = await import("../../src/validation");
     accessMock.mockRejectedValueOnce(errWithCode("ELOOP", "too many links"));

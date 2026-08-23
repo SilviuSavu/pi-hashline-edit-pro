@@ -203,7 +203,7 @@ describe("renderCall preview", () => {
   });
 });
 
-describe("compPreview — noop", () => {
+describe("compPreview - noop", () => {
   it("returns a noop error when the edit produces identical content", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);

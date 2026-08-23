@@ -445,7 +445,7 @@ describe("auto-read after write", () => {
   });
 });
 
-describe("auto-read after write — non-text files", () => {
+describe("auto-read after write - non-text files", () => {
   it("silently skips auto-read when the written file is binary", async () => {
     const cwd = await makeTempDir("auto-read-test-binary-");
     const pngBytes = Buffer.from(

@@ -42,7 +42,7 @@ resEdit(
   });
 });
 
-describe("checkBoundaryDup (via applyEdit) — auto-fix", () => {
+describe("checkBoundaryDup (via applyEdit) - auto-fix", () => {
   it("auto-fixes trailing duplication", async () => {
     const content = "a\nb\nc\nd";
     const hashes = await lineHashes(content, home.testPath);

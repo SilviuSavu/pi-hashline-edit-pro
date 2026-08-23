@@ -4,7 +4,7 @@ import { useTestHome } from "../support/fixtures";
 
 const home = useTestHome();
 
-describe("large file stress tests — store path", () => {
+describe("large file stress tests - store path", () => {
   it("handles 10,000 identical lines via store with unique hashes", async () => {
     const line = "}";
     const content = Array.from({ length: 10_000 }, () => line).join("\n");
@@ -94,7 +94,7 @@ describe("large file stress tests — store path", () => {
   }, 120_000);
 });
 
-describe("large file stress tests — pure path (no store)", () => {
+describe("large file stress tests - pure path (no store)", () => {
   it("handles 100,000 unique lines without timeout", () => {
     const content = Array.from({ length: 100_000 }, (_, i) => `line${i}`).join("\n");
     const start = performance.now();
@@ -188,7 +188,7 @@ describe("hash collision stress tests", () => {
   }, 300_000);
 });
 
-describe("mapStableHashes — large file stress", () => {
+describe("mapStableHashes - large file stress", () => {
   it("handles 10,000 identical lines with interleaved insert/delete/modify", async () => {
     const oldContent = Array.from({ length: 10_000 }, () => "same").join("\n");
     const oldHashes = _lineHashesPure(oldContent);

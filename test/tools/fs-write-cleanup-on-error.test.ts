@@ -28,7 +28,7 @@ vi.mock("fs/promises", () => ({
   stat: statMock,
 }));
 
-describe("writeAtomic — temp file cleanup on write failure", () => {
+describe("writeAtomic - temp file cleanup on write failure", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     handleWriteFileMock.mockResolvedValue(undefined);
@@ -86,7 +86,7 @@ describe("writeAtomic — temp file cleanup on write failure", () => {
   });
 });
 
-describe("writeAtomic — open failure", () => {
+describe("writeAtomic - open failure", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

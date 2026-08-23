@@ -14,7 +14,7 @@ function diagRef(ref: string): string {
 	}
 
 	if (/^\d+/.test(trimmed)) {
-		return `[E_BAD_REF] Invalid anchor. Use the hash alone (e.g. "aB3") — no line numbers or trailing content.`;
+		return `[E_BAD_REF] Invalid anchor. Use the hash alone (e.g. "aB3"): no line numbers or trailing content.`;
 	}
 
 	if (trimmed.includes("│")) {

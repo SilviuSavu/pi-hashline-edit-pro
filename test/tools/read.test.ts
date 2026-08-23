@@ -57,7 +57,7 @@ describe("fmtRegion", () => {
   });
 });
 
-describe("read tool — snapshot failure", () => {
+describe("read tool - snapshot failure", () => {
   it("succeeds and omits snapshotId when the snapshot computation fails", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\n", async ({ cwd }) => {
       const { ctx, readTool } = setupIntegrationTest(cwd);
@@ -82,7 +82,7 @@ describe("read tool — snapshot failure", () => {
   });
 });
 
-describe("read tool — file_path alias", () => {
+describe("read tool - file_path alias", () => {
   it("reads a file via the file_path alias", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\n", async ({ cwd }) => {
       const { ctx, readTool } = setupIntegrationTest(cwd);

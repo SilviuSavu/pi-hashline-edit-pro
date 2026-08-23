@@ -4,7 +4,7 @@ import { withTempFile, setupIntegrationTest, useTestHome } from "../support/fixt
 
 const home = useTestHome();
 
-describe("details.metrics surface (Phase 2 C — host-only observability)", () => {
+describe("details.metrics surface (Phase 2 C - host-only observability)", () => {
   it("changed-mode edit reports applied classification + edits_attempted", async () => {
     await withTempFile("sample.ts", "alpha\nbeta\ngamma\n", async ({ cwd }) => {
       const { ctx, editTool } = setupIntegrationTest(cwd);

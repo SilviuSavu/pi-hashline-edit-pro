@@ -8,7 +8,7 @@ import { useTestHome } from "../support/fixtures";
 
 const home = useTestHome();
 
-describe("applyEdit — recovery scenarios", () => {
+describe("applyEdit - recovery scenarios", () => {
   it("autocorrects reversed range (start > end)", async () => {
     const content = "a\nb\nc\nd\ne";
     const hashes = await lineHashes(content, home.testPath);

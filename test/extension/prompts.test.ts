@@ -79,7 +79,7 @@ describe("prompt guidelines", () => {
       new URL("../../prompts/read-guidelines.md", import.meta.url),
       "utf-8",
     );
-    expect(content).toContain("call again after any edit");
+    expect(content).toContain("call again after an edit");
     expect(content).not.toContain("{{AUTO_READ_NOTE}}");
   });
   it("undo-last-replace-guidelines.md loads without template variables", () => {
@@ -97,7 +97,7 @@ describe("read tool guidelines", () => {
     regRead(pi);
     const tool = getTool("read");
     const guidelines = tool.promptGuidelines as string[];
-    expect(guidelines.some((g) => g.includes("call again after any edit"))).toBe(true);
+    expect(guidelines.some((g) => g.includes("call again after an edit"))).toBe(true);
     expect(guidelines.some((g) => g.includes("call before `replace`"))).toBe(true);
   });
 });

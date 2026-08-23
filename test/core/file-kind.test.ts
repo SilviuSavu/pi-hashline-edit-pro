@@ -121,7 +121,7 @@ describe("loadFileKindAndText", () => {
 });
 
 
-describe("loadFileKindAndText — maxLines early bailout", () => {
+describe("loadFileKindAndText - maxLines early bailout", () => {
   it("rejects files exceeding maxLines during decode", async () => {
     await withTempFile("many-lines.txt", Array.from({ length: 10 }, (_, i) => `line${i}`).join("\n"), async ({ cwd }) => {
       const path = join(cwd, "many-lines.txt");
@@ -166,7 +166,7 @@ describe("loadFileKindAndText — maxLines early bailout", () => {
   });
 });
 
-describe("loadFileKindAndText — image detection", () => {
+describe("loadFileKindAndText - image detection", () => {
   const ftypBox = (brand: string): Buffer => {
     const box = Buffer.alloc(24);
     box.writeUInt32BE(24, 0);

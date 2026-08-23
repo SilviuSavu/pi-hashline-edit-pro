@@ -5,7 +5,7 @@ import { withTempFile, withTempBytes, setupIntegrationTest, useTestHome, getText
 
 const home = useTestHome();
 
-describe("replace tool — end-to-end", () => {
+describe("replace tool - end-to-end", () => {
   it("reads a file and replaces a single line", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd, path }) => {
       const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
@@ -211,7 +211,7 @@ describe("replace tool — end-to-end", () => {
     });
   });
 
-  describe("replace tool — line-ending matrix", () => {
+  describe("replace tool - line-ending matrix", () => {
     const cases = [
       {
         name: "LF",

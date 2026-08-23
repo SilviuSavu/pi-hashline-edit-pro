@@ -166,7 +166,7 @@ describe("regReplace", () => {
   });
 });
 
-describe("regReplace — robustness", () => {
+describe("regReplace - robustness", () => {
   it("reports success even when the post-edit snapshot fails", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd, path }) => {
       const { ctx, editTool } = setupIntegrationTest(cwd);

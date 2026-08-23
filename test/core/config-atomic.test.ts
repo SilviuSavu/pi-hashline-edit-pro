@@ -36,7 +36,7 @@ function stubPlatform(value: string): void {
   });
 }
 
-describe("writeConfig — windows EPERM fallback", () => {
+describe("writeConfig - windows EPERM fallback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     renameMock.mockResolvedValue(undefined);

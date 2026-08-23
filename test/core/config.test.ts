@@ -21,7 +21,7 @@ async function withTempHome(run: () => Promise<void>): Promise<void> {
   }
 }
 
-describe("config — toggleAutoRead", () => {
+describe("config - toggleAutoRead", () => {
   it("toggles from default true to false", async () => {
     await withTempHome(async () => {
       expect(await toggleAutoRead()).toBe(false);
@@ -47,7 +47,7 @@ describe("config — toggleAutoRead", () => {
   });
 });
 
-describe("config — readConfig / writeConfig", () => {
+describe("config - readConfig / writeConfig", () => {
   it("writeConfig persists autoRead", async () => {
     await withTempHome(async () => {
       await writeConfig({ autoRead: true });
@@ -72,7 +72,7 @@ describe("config — readConfig / writeConfig", () => {
   });
 });
 
-describe("config — atomic writes", () => {
+describe("config - atomic writes", () => {
   it("leaves no temp files behind after writeConfig", async () => {
     await withTempHome(async () => {
       await writeConfig({ autoRead: true });
@@ -83,7 +83,7 @@ describe("config — atomic writes", () => {
   });
 });
 
-describe("config — readConfig defaults", () => {
+describe("config - readConfig defaults", () => {
   it("defaults to true when no config file exists", async () => {
     await withTempHome(async () => {
       expect((await readConfig()).autoRead).toBe(true);
@@ -98,7 +98,7 @@ describe("config — readConfig defaults", () => {
   });
 });
 
-describe("config — wrong-shape config", () => {
+describe("config - wrong-shape config", () => {
   it("falls back to defaults when config.json is not an object", async () => {
     await withTempHome(async () => {
       const { writeFile, mkdir } = await import("fs/promises");

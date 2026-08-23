@@ -5,7 +5,7 @@ import { useTestHome } from "../support/fixtures";
 const home = useTestHome();
 
 
-describe("mapStableHashes — identity and simple changes", () => {
+describe("mapStableHashes - identity and simple changes", () => {
   it("preserves all hashes when content is unchanged", async () => {
     const content = "a\nb\nc";
     const hashes = await lineHashes(content, home.testPath);
@@ -107,7 +107,7 @@ describe("mapStableHashes — identity and simple changes", () => {
   });
 });
 
-describe("mapStableHashes — multiple changes combined", () => {
+describe("mapStableHashes - multiple changes combined", () => {
   it("handles simultaneous insert, delete, and modify", async () => {
     const oldContent = "a\nb\nc\nd\ne";
     const oldHashes = await lineHashes(oldContent, home.testPath);
@@ -158,7 +158,7 @@ describe("mapStableHashes — multiple changes combined", () => {
   });
 });
 
-describe("mapStableHashes — edge cases", () => {
+describe("mapStableHashes - edge cases", () => {
   it("handles empty old content (starting from scratch)", async () => {
     const oldContent = "";
     const oldHashes = await lineHashes(oldContent, home.testPath);
@@ -239,7 +239,7 @@ describe("mapStableHashes — edge cases", () => {
   });
 });
 
-describe("mapStableHashes — removedHashes edge cases", () => {
+describe("mapStableHashes - removedHashes edge cases", () => {
   it("ignores removedHashes entries that don't exist in old content", async () => {
     const oldContent = "a\nb\nc";
     const oldHashes = await lineHashes(oldContent, home.testPath);
@@ -433,7 +433,7 @@ describe("mapStableHashes — removedHashes edge cases", () => {
   });
 });
 
-describe("mapStableHashes — hash uniqueness guarantees", () => {
+describe("mapStableHashes - hash uniqueness guarantees", () => {
   it("produces unique hashes for all lines in the result", async () => {
     const oldContent = "a\nb\nc\nd\ne";
     const oldHashes = await lineHashes(oldContent, home.testPath);
@@ -463,7 +463,7 @@ describe("mapStableHashes — hash uniqueness guarantees", () => {
   });
 });
 
-describe("mapStableHashes — ordering and position stability", () => {
+describe("mapStableHashes - ordering and position stability", () => {
   it("preserves hashes when lines are reordered", async () => {
     const oldContent = "a\nb\nc";
     const oldHashes = await lineHashes(oldContent, home.testPath);
@@ -511,7 +511,7 @@ describe("mapStableHashes — ordering and position stability", () => {
   });
 });
 
-describe("mapStableHashes — nearest-candidate selection", () => {
+describe("mapStableHashes - nearest-candidate selection", () => {
   it("prefers the nearest surviving candidate when closer ones are removed", async () => {
     const oldContent = "x\nx\nx\nx\nx";
     const oldHashes = await lineHashes(oldContent, home.testPath);
