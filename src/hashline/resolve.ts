@@ -162,7 +162,7 @@ function assertItem(edit: Record<string, unknown>): void {
   }
 }
 
-const ANCHOR_ROW_RE = new RegExp(`^([+-]?)(${HASH_RUN})│`);
+export const ANCHOR_ROW_RE = new RegExp(`^([+-]?)(${HASH_RUN})│`);
 
 export function resEdit(edit: HTEdit, warnings?: string[]): HEdit {
   assertItem(edit as Record<string, unknown>);

@@ -14,6 +14,7 @@ import {
 } from "./src/config";
 import { loadHashStore, pruneMissing } from "./src/hash-store";
 import { recordServedSafe, clearServed } from "./src/served";
+import { clearBoundaryBypass } from "./src/boundary-bypass";
 import { readNormFile } from "./src/file-reader";
 import { loadFileKindAndText } from "./src/file-kind";
 import { toCwd } from "./src/paths";
@@ -64,6 +65,7 @@ export default function (pi: ExtensionAPI): void {
         try {
           const target = await resolveTarget(toCwd(writtenPath, ctx.cwd));
           await clearUndo(target);
+          clearBoundaryBypass(target);
           const store = await loadHashStore();
           clearServed(store, target);
         } catch (error) {

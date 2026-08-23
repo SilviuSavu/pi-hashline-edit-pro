@@ -125,6 +125,7 @@ export async function loadFileKindAndText(
 
     const decoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: true });
     let hadUtf8DecodeErrors = false;
+    let containsNul = false;
     let newlineCount = 0;
     const parts: string[] = [];
 
@@ -132,6 +133,9 @@ export async function loadFileKindAndText(
       const decoded = decoder.decode(chunk, { stream });
       if (!hadUtf8DecodeErrors && decoded.includes("\uFFFD")) {
         hadUtf8DecodeErrors = true;
+      }
+      if (!containsNul && decoded.includes("\0")) {
+        containsNul = true;
       }
       if (options?.maxLines !== undefined) {
         for (let i = 0; i < decoded.length; i++) {
@@ -165,6 +169,10 @@ export async function loadFileKindAndText(
       position += chunkBytesRead;
     }
     parts.push(decodeChunk(new Uint8Array(0), false));
+
+    if (containsNul) {
+      return { kind: "binary", description: "contains NUL bytes" };
+    }
 
     return {
       kind: "text",

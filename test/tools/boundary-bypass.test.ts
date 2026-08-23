@@ -6,8 +6,10 @@ import { compPreview } from "../../src/replace";
 import {
   withTempFile,
   setupIntegrationTest,
+  makeFakePiRegistry,
   getText,
 } from "../support/fixtures";
+import register from "../../index";
 
 const NOOP_LINE_1 = "bbb";
 
@@ -189,6 +191,39 @@ describe("boundary dedup noop bypass", () => {
       expect(getText(resend)).toContain("Successfully replaced");
       expect(getText(resend)).toContain("[E_BOUNDARY_BYPASS]");
       expect(await readFile(path, "utf-8")).toBe("aaa\nbbb\nccc\nccc\n");
+    });
+  });
+
+  it("a write clears the pending bypass before it can be consumed", async () => {
+    await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd, path }) => {
+      const { pi, getTool, handlers } = makeFakePiRegistry();
+      register(pi);
+      const ctx = { cwd, ui: { notify() {} } } as any;
+      const readTool = getTool("read");
+      const editTool = getTool("replace");
+      const hashes = await readSample(ctx, readTool);
+
+      await editTool.execute("c1", cutPayload(hashes), undefined, undefined, ctx);
+
+      const writeHandler = handlers.get("tool_result");
+      expect(writeHandler).toBeDefined();
+      await writeHandler!(
+        {
+          toolName: "write",
+          toolCallId: "write-1",
+          isError: false,
+          input: { path: "sample.ts", content: "aaa\nbbb\nccc\n" },
+          content: [{ type: "text", text: "File written." }],
+          details: undefined,
+        },
+        ctx,
+      );
+
+      const resend = await editTool.execute("e2", cutPayload(hashes), undefined, undefined, ctx);
+      expect(resend.details.classification).toBe("noop");
+      expect(getText(resend)).toContain("No changes made");
+      expect(getText(resend)).not.toContain("[E_BOUNDARY_BYPASS]");
+      expect(await readFile(path, "utf-8")).toBe("aaa\nbbb\nccc\n");
     });
   });
 });

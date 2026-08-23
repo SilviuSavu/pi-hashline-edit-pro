@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
-import { MAX_BYTES } from "../../src/constants";
+import { MAX_BYTES, SNIFF_BYTES } from "../../src/constants";
 import { loadFileKindAndText } from "../../src/file-kind";
 import { withTempFile } from "../support/fixtures";
 
@@ -276,6 +276,24 @@ describe("loadFileKindAndText — image detection", () => {
         const result = await loadFileKindAndText(path);
         expect(result.kind, name).toBe("text");
         if (result.kind === "text") expect(result.text, name).toBe(content);
+      }
+    });
+  });
+
+  it("rejects NUL bytes beyond the sniff window as binary", async () => {
+    await withTempFile("placeholder.txt", "x", async ({ cwd }) => {
+      const binPath = join(cwd, "tail-nul.bin");
+      const prefix = Buffer.from("alpha\nbeta\n".repeat(750), "utf-8");
+      expect(prefix.length + 1).toBeGreaterThan(SNIFF_BYTES);
+      const bytes = Buffer.concat([
+        prefix,
+        Buffer.from([0x61, 0x00, 0x62, 0x0a]),
+      ]);
+      await writeFile(binPath, bytes);
+      const result = await loadFileKindAndText(binPath);
+      expect(result.kind).toBe("binary");
+      if (result.kind === "binary") {
+        expect(result.description).toContain("NUL");
       }
     });
   });

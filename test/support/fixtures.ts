@@ -142,6 +142,7 @@ export async function makeTempDir(prefix: string): Promise<string> {
 
 export function makeFakePiRegistry() {
   const tools = new Map<string, any>();
+  const handlers = new Map<string, (...args: unknown[]) => unknown>();
   return {
     pi: {
       registerTool(tool: any) {
@@ -169,8 +170,11 @@ export function makeFakePiRegistry() {
         tools.set(tool.name, tool);
       },
       registerCommand() {},
-      on() {},
+      on(event: string, handler: (...args: unknown[]) => unknown) {
+        handlers.set(event, handler);
+      },
     } as any,
+    handlers,
     getTool(name: string) {
       const tool = tools.get(name);
       if (!tool) throw new Error(`Tool not registered: ${name}`);

@@ -54,4 +54,9 @@ describe("changedRange", () => {
     const result = changedRange("a\nb\nc", "");
     expect(result).toEqual({ firstChangedLine: 1, lastChangedLine: 1 });
   });
+
+  it("reports no changed lines for a trailing-newline-only change", () => {
+    expect(changedRange("a\nb", "a\nb\n")).toBeNull();
+    expect(changedRange("a\nb\n", "a\nb")).toBeNull();
+  });
 });

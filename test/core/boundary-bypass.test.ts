@@ -68,3 +68,38 @@ describe("boundary noop bypass", () => {
     expect(consumeBoundaryBypass(P, payload)).toBe(false);
   });
 });
+
+describe("noopPayloadKey canonicalization", () => {
+  it("normalizes anchor whitespace and copied prefixes", () => {
+    const bare = noopPayloadKey(P, "aB3", "cD4", ["x"]);
+    expect(noopPayloadKey(P, " aB3 ", "cD4", ["x"])).toBe(bare);
+    expect(noopPayloadKey(P, "aB3│alpha", "cD4", ["x"])).toBe(bare);
+    expect(noopPayloadKey(P, "+aB3│alpha", "cD4", ["x"])).toBe(bare);
+    expect(noopPayloadKey(P, "-aB3│alpha", "cD4", ["x"])).toBe(bare);
+  });
+
+  it("normalizes replacement line boundaries and copied prefixes", () => {
+    const base = noopPayloadKey(P, "aB3", "cD4", ["  x", "y"]);
+    expect(noopPayloadKey(P, "aB3", "cD4", ["  x\ny"])).toBe(base);
+    expect(noopPayloadKey(P, "aB3", "cD4", ["  x\r\ny"])).toBe(base);
+    expect(noopPayloadKey(P, "aB3", "cD4", ["aB3│  x", "y"])).toBe(base);
+    expect(noopPayloadKey(P, "aB3", "cD4", ["+aB3│  x", "y"])).toBe(base);
+    expect(noopPayloadKey(P, "aB3", "cD4", ["-aB3│  x", "y"])).toBe(base);
+    expect(noopPayloadKey(P, "aB3", "cD4", ["-   │  x", "y"])).toBe(base);
+  });
+
+  it("keeps meaningful blank lines distinct", () => {
+    expect(noopPayloadKey(P, "aB3", "cD4", ["a", ""])).not.toBe(
+      noopPayloadKey(P, "aB3", "cD4", ["a"]),
+    );
+  });
+
+  it("keeps genuinely different edits distinct", () => {
+    expect(noopPayloadKey(P, "aB3", "cD4", ["x"])).not.toBe(
+      noopPayloadKey(P, "aB3", "cD4", ["y"]),
+    );
+    expect(noopPayloadKey(P, "aB3", "cD4", ["x"])).not.toBe(
+      noopPayloadKey(P, "cC4", "cD4", ["x"]),
+    );
+  });
+});
