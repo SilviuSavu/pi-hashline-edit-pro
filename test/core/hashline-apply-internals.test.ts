@@ -325,4 +325,41 @@ resEdit(
     expect(result.autoFixes).toHaveLength(1);
     expect(result.autoFixes![0]!.kind).toBe("trailing");
   });
+
+  it("does not strip a whitespace-only line next to a unique empty line before the range", async () => {
+    const content = "\nsecond";
+    const hashes = await lineHashes(content, home.testPath);
+    const result = applyEdit(content, 
+resEdit(
+      { remove_from: hashes[1]!, remove_to: hashes[1]!, replacement_lines: ["   ", "second"] },
+    ));
+    expect(result.content).toBe("\n   \nsecond");
+    expect(result.autoFixes ?? []).toHaveLength(0);
+    expect(result.noopEdit).toBeUndefined();
+  });
+
+  it("does not strip a whitespace-only line next to a unique empty line after the range", async () => {
+    const content = "second\n";
+    const hashes = await lineHashes(content, home.testPath);
+    const result = applyEdit(content, 
+resEdit(
+      { remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_lines: ["second", "   "] },
+    ));
+    expect(result.content).toBe("second\n   \n");
+    expect(result.autoFixes ?? []).toHaveLength(0);
+    expect(result.noopEdit).toBeUndefined();
+  });
+
+  it("strips a re-included content run but stops at a whitespace-only line", async () => {
+    const content = "a\nfoo\n\n";
+    const hashes = await lineHashes(content, home.testPath);
+    const result = applyEdit(content, 
+resEdit(
+      { remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_lines: ["foo", "   "] },
+    ));
+    expect(result.content).toBe("   \nfoo\n\n");
+    expect(result.autoFixes).toHaveLength(1);
+    expect(result.autoFixes![0]!.kind).toBe("first-new-after");
+    expect(result.autoFixes![0]!.removedLine).toBe("foo");
+  });
 });

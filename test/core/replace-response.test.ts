@@ -58,6 +58,28 @@ describe("buildNoop", () => {
     expect(result.content[0].text).not.toContain("old\n".repeat(300));
     expect(result.content[0].text).toContain("...");
   });
+  it("notes boundary dedup removals in the noop message", () => {
+    const result = buildNoop({
+      path: "test.txt",
+      noopEdit: { loc: "ABC", currentContent: "old" },
+      snapshotId: "snap1",
+      editMeta: { editsAttempted: 1, noopEditsCount: 1, addedLines: 0, removedLines: 0 },
+      warnings: undefined,
+      boundaryRemovedLines: 1,
+    });
+    expect(result.content[0].text).toContain("Boundary duplication detection removed 1 line(s) from the replacement");
+    expect(result.content[0].text).toContain("resend the identical edit to apply it literally");
+  });
+  it("omits the dedup note when nothing was removed", () => {
+    const result = buildNoop({
+      path: "test.txt",
+      noopEdit: { loc: "ABC", currentContent: "old" },
+      snapshotId: "snap1",
+      editMeta: { editsAttempted: 1, noopEditsCount: 1, addedLines: 0, removedLines: 0 },
+      warnings: undefined,
+    });
+    expect(result.content[0].text).not.toContain("Boundary duplication detection");
+  });
 });
 
 describe("buildChanged", () => {

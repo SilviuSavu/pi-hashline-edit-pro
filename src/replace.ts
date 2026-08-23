@@ -109,6 +109,7 @@ interface PipelineResult {
   totalAddedLines: number;
   totalRemovedLines: number;
   hadBoundaryDedup: boolean;
+  boundaryRemovedLines: number;
 }
 
 const PREVIEW_DEBOUNCE_MS = 150;
@@ -303,6 +304,7 @@ export async function execPipeline(
     totalAddedLines,
     totalRemovedLines,
     hadBoundaryDedup: (anchorResult.autoFixes?.length ?? 0) > 0,
+    boundaryRemovedLines: anchorResult.autoFixes?.length ?? 0,
   };
 }
 
@@ -500,6 +502,7 @@ export function buildToolDef(): ToolDef {
           lastChangedLine,
           resultHashes,
           hadBoundaryDedup,
+          boundaryRemovedLines,
           totalAddedLines,
           totalRemovedLines,
         } = await execPipeline(
@@ -532,6 +535,7 @@ export function buildToolDef(): ToolDef {
               removedLines: 0,
             },
             warnings,
+            boundaryRemovedLines,
           });
         }
 

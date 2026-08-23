@@ -111,6 +111,7 @@ function applyAutoFix(
     while (
       firstNew.index + runLen < repl.length &&
       e + runLen < fileLines.length &&
+      canon(fileLines[e + runLen]!).length > 0 &&
       canon(repl[firstNew.index + runLen]!) === canon(fileLines[e + runLen]!)
     ) {
       runLen++;
@@ -127,6 +128,7 @@ function applyAutoFix(
     while (
       lastNew.index - runLen >= 0 &&
       s - 2 - runLen >= 0 &&
+      canon(fileLines[s - 2 - runLen]!).length > 0 &&
       canon(repl[lastNew.index - runLen]!) === canon(fileLines[s - 2 - runLen]!)
     ) {
       runLen++;

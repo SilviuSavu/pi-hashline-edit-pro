@@ -618,3 +618,50 @@ describe("section-unique boundary duplication (auto-fix)", () => {
     });
   });
 });
+
+describe("whitespace-only lines next to empty lines (regression)", () => {
+  it("inserts a whitespace-only line before the range next to a unique empty line", async () => {
+    const file = "\nsecond\n";
+    await withTempFile("sample.ts", file, async ({ cwd, path }) => {
+      const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
+      const read1 = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const lines1 = getText(read1).split("\n");
+      const secondHash = extractHash(lines1.find((l) => l.includes("│second"))!);
+      const editResult = await editTool.execute(
+        "e1",
+        {
+          path: "sample.ts",
+          remove_from: secondHash, remove_to: secondHash,
+          replacement_lines: ["   ", "second"],
+        },
+        undefined, undefined, ctx,
+      );
+      const text = getText(editResult);
+      expect(text).toContain("Successfully replaced");
+      expect(text).toContain("Added 2 line(s), removed 1 line(s).");
+      expect(await readFile(path, "utf-8")).toBe("\n   \nsecond\n");
+    });
+  });
+
+  it("inserts a whitespace-only line after the range next to a unique empty line", async () => {
+    const file = "second\n";
+    await withTempFile("sample.ts", file, async ({ cwd, path }) => {
+      const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
+      const read1 = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const lines1 = getText(read1).split("\n");
+      const secondHash = extractHash(lines1.find((l) => l.includes("│second"))!);
+      const editResult = await editTool.execute(
+        "e1",
+        {
+          path: "sample.ts",
+          remove_from: secondHash, remove_to: secondHash,
+          replacement_lines: ["second", "   "],
+        },
+        undefined, undefined, ctx,
+      );
+      const text = getText(editResult);
+      expect(text).toContain("Successfully replaced");
+      expect(await readFile(path, "utf-8")).toBe("second\n   \n");
+    });
+  });
+});

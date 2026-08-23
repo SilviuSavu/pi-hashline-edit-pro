@@ -345,6 +345,7 @@ function firstNewAfterDups(
 	let runLen = 0;
 	while (
 		runLen < maxK &&
+		canonLines[endLine + runLen]!.length > 0 &&
 		canon(contentLines[firstNew.index + runLen]!) === canonLines[endLine + runLen]!
 	) {
 		runLen++;
@@ -369,6 +370,7 @@ function lastNewBeforeDups(
 	let runLen = 0;
 	while (
 		runLen < maxK &&
+		canonLines[startLine - 2 - runLen]!.length > 0 &&
 		canon(contentLines[lastNew.index - runLen]!) === canonLines[startLine - 2 - runLen]!
 	) {
 		runLen++;
@@ -402,8 +404,8 @@ export function findNewEdge(
 	const start = fromEnd ? contentLines.length - 1 : 0;
 	for (let i = start; i >= 0 && i < contentLines.length; i += step) {
 		const line = contentLines[i]!;
-		if (line.length === 0) continue;
 		const key = canon(line);
+		if (key.length === 0) continue;
 		const count = multiset.get(key) ?? 0;
 		if (count > 0) {
 			multiset.set(key, count - 1);
