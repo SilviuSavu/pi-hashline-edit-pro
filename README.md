@@ -2,18 +2,18 @@
 
 [![npm version](https://img.shields.io/npm/v/pi-hashline-edit-pro.svg)](https://www.npmjs.com/package/pi-hashline-edit-pro) [![npm downloads](https://img.shields.io/npm/dm/pi-hashline-edit-pro.svg)](https://www.npmjs.com/package/pi-hashline-edit-pro)
 
-Hash-anchored `read` and `replace` tools for [pi-coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent). Every line of a file gets a unique 3-character hash, and you edit by hash. No line numbers, no fuzzy matching, no edits landing on the wrong line.
+Hash-anchored `read` and `replace` tools for [pi-coding-agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent). Every line of a file gets a unique 3-character hash, and you edit by hash. There are no line numbers and no fuzzy matching, so edits land on the lines you meant.
 
 Fork of [pi-hashline-edit](https://github.com/RimuruW/pi-hashline-edit) by RimuruW, extended with 3-character hashes and collision resolution.
 
-## What you get
+## Features
 
-- **Read with anchors.** Every line comes back as `HASH│content`. The hash is the line's address.
-- **Edit by hash.** `replace` targets a range of hashes, so edits always land on the lines you meant.
-- **Anchors that stay put.** Edit one part of a file and the hashes of the rest stay the same. Read once, keep editing.
-- **Fresh anchors, automatically.** After every `write` you get the new anchors. After every `replace` you get the diff with the new hashes.
-- **Undo when you need it.** The last replace on a file can be reverted, even after a restart.
-- **Safe writes.** Permissions, line endings, BOMs, symlinks, and hard links survive every edit.
+- `read` returns every line as `HASH│content`. The hash is the line's address.
+- `replace` targets a range of hashes, so edits land on the lines you meant.
+- Editing one part of a file leaves the hashes of the rest unchanged, so anchors from an earlier read stay valid across edits.
+- After a `write` you get the new anchors. After a `replace` you get the diff with the new hashes.
+- The most recent replace on a file can be reverted, even after a restart.
+- Permissions, line endings, BOMs, symlinks, and hard links survive every edit.
 
 ## Quick start
 
@@ -36,7 +36,7 @@ kQm│}
 }
 ```
 
-3. Keep editing. Anchors for lines you didn't touch stay valid, and auto-read hands you fresh anchors after each change.
+3. Keep editing. Anchors for lines you didn't touch stay valid, and auto-read returns fresh anchors after each change.
 
 ## Installation
 
@@ -97,7 +97,7 @@ Notes:
 
 - The request is checked before any file I/O, so a bad request never touches the file.
 - Common copy-paste slips are fixed automatically and reported: a leftover `HASH│` prefix (including a truncated or expanded prefix of up to 6 characters, e.g. `L3│` or `ab12│`) in `replacement_lines` or `remove_from`/`remove_to`, diff-preview rows pasted into the replacement, a reversed range, or a boundary line pasted twice. New lines that re-include a block adjacent to the range are stripped automatically when that block is unique in the file. The whole run is stripped as one unit (including repeated structural lines like `}`), so re-including an unchanged block next to the range never duplicates it. A missing `path` is resolved from the anchors when they uniquely identify a file in the hash store (reported as a warning); when the anchors match multiple known files the request is rejected with the candidate paths named. `file_path` works as an alias for `path` in all three tools.
-- An edit that produces identical content reports `No changes made` and leaves the anchors alone. When such a noop happened because a boundary anti-duplication cut removed lines from the replacement (the cut blocked a line that duplicates the block next to the range from being added), the exact same replacement sent once more runs with the edge anti-duplication turned off for that single call and is applied literally. The duplicated lines are kept, and the result carries a `[E_BOUNDARY_BYPASS]` notice. The pending bypass is per file and keyed to that payload; copied `HASH│` prefixes, diff markers, and stray whitespace in the resend are normalized before matching, so a copy-paste resend still hits it. Any applied edit clears it, and a successful `write` also clears it.
+- An edit that produces identical content reports `No changes made` and leaves the anchors alone. When such a noop happened because a boundary anti-duplication cut removed lines from the replacement (the cut blocked a line that duplicates the block next to the range from being added), the same replacement sent once more runs with the edge anti-duplication turned off for that single call and is applied literally. The duplicated lines are kept, and the result carries a `[E_BOUNDARY_BYPASS]` notice. The pending bypass is per file and keyed to that payload; copied `HASH│` prefixes, diff markers, and stray whitespace in the resend are normalized before matching, so a copy-paste resend still hits it. Any applied edit clears it, and a successful `write` also clears it.
 - Every line in the removed range must match what was last shown to you. The extension records the `HASH│content` rows it serves (`read` output, the auto-read block after `write`, the `+HASH│`/` HASH│` rows of post-edit diffs (replace and undo), the current-range rows of `[E_RANGE_STALE]` feedback, and the context rows of stale/ambiguous-anchor feedback) and verifies the whole range against that record before writing. If an interior line changed on disk since it was shown (external editor, formatter-on-save, code generation) or was never shown, the edit is refused with `[E_RANGE_STALE]` and the current range is returned with fresh anchors, so the retry needs no `read`. Edits outside the served record are only possible for files that were never read (for example right after a `write` with auto-read disabled); once the file has been served, every replaced line must have been shown.
 - After a successful edit you get the post-edit diff with fresh anchors, so you can keep editing without re-reading.
 - Do not issue multiple replace calls on the same file in one message; parallel edits split attention across the post-edit diffs and removed lines are easy to miss. Verify each diff before the next edit on that file.
@@ -134,7 +134,7 @@ All three tools return machine-readable metadata in `details` alongside the mode
 
 | Command | Description |
 | --- | --- |
-| `/toggle-auto-read` | Toggle automatic hashline anchors after write and post-edit diffs after replace and undo_last_replace operations. Persists across sessions. |
+| `/toggle-auto-read` | Toggle auto-read anchors after write and post-edit diffs after replace and undo_last_replace. Persists across sessions. |
 
 Settings live in `~/.config/pi-hashline-edit-pro/config.json`, created automatically when a setting is toggled. On non-Windows platforms, the config directory honors `XDG_CONFIG_HOME` when set (falling back to `~/.config`); on Windows it always uses `~/.config`:
 
@@ -148,9 +148,9 @@ Settings live in `~/.config/pi-hashline-edit-pro/config.json`, created automatic
 
 Each line is canonicalized (carriage returns stripped, trailing whitespace trimmed) and hashed with [xxhash-wasm](https://github.com/jungomi/xxhash-wasm) (xxHash32), then mapped to a 3-character string over `A-Za-z0-9`, which gives 62³ = 238,328 possible anchors. The canonicalization keeps anchors stable across editor-save cycles that add or remove trailing whitespace.
 
-The alphabet is sized for an LLM consumer: the model tokenizes rather than squinting at glyphs, so case and digits are all included. The URL-safe specials `-` and `_` are deliberately excluded. A hash starting with `-` is shape-identical to a diff-preview deletion row, and `-`/`_` at a line start are markdown-active, inviting mis-copying and false autocorrections.
+The alphabet is sized for an LLM consumer: the model reads the hashes as tokens rather than inspecting glyph shapes, so letters and digits are all included. The URL-safe specials `-` and `_` are deliberately excluded. A hash starting with `-` looks like a diff-preview deletion row, and `-`/`_` at the start of a line are markdown-active, which invites mis-copying and false autocorrections.
 
-Unique anchors by construction. If a line's base hash collides with an already-assigned hash, the next free hash is allocated from a bitset by probing with a stride coprime to the hash space (O(1) amortized). The stride is `62² + 62 + 1`, so consecutive collisions, runs of blank lines, repeated `}`, land on anchors that differ in all three characters instead of sharing a prefix. Every line in a file therefore gets a unique anchor; two byte-identical lines (repeated `}`, repeated `import` statements) never share one. The same guarantee sets the file size cap: at most 238,328 lines per file, beyond which `read` and `replace` reject with `[E_FILE_TOO_LARGE]` (use `write` for very large files).
+Anchors are unique by construction. If a line's base hash collides with an already-assigned hash, the next free hash is allocated from a bitset by probing with a stride coprime to the hash space (O(1) amortized). The stride is `62² + 62 + 1`, so consecutive collisions, runs of blank lines, repeated `}`, land on anchors that differ in all three characters instead of sharing a prefix. Every line in a file therefore gets a unique anchor; two byte-identical lines (repeated `}`, repeated `import` statements) never share one. The same guarantee sets the file size cap: at most 238,328 lines per file, beyond which `read` and `replace` reject with `[E_FILE_TOO_LARGE]` (use `write` for very large files).
 
 Hashes live in a persistent per-file store (`~/.config/pi-hashline-edit-pro/hash-store.sqlite`) that keeps the hashes of unchanged lines across edits. When a range is replaced, the runtime maps the old content onto the new content and copies hashes for lines that survived; only genuinely new lines get fresh hashes.
 

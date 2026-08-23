@@ -515,7 +515,7 @@ export function buildToolDef(): ToolDef {
           warnings.unshift(resolution.warning);
         }
         if (boundaryBypass && originalNormalized !== result) {
-          warnings.push("[E_BOUNDARY_BYPASS] Boundary dedup was off for this call and is restored.");
+          warnings.push("[E_BOUNDARY_BYPASS] Boundary dedup was off for this call and is back on.");
         }
 
         const editsAttempted = 1;
@@ -555,7 +555,7 @@ export function buildToolDef(): ToolDef {
         });
         if (!undo.persisted) {
           throw new Error(
-            `[E_UNDO_UNAVAILABLE] Could not persist undo history; the edit was NOT applied and ${path} is unchanged.`
+            `[E_UNDO_UNAVAILABLE] Could not persist undo history; the edit was not applied and ${path} is unchanged.`
           );
         }
         try {

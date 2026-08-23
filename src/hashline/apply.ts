@@ -55,7 +55,7 @@ type NoopSpan = {
 function assertNotEmpty(originalContent: string, result: string): void {
 	if (originalContent.length > 0 && result.length === 0) {
 		throw new Error(
-			"[E_WOULD_EMPTY] Cannot empty a non-empty file via edit. Use `write` if you need to clear the file."
+			"[E_WOULD_EMPTY] A replace cannot empty a non-empty file. Use `write` to clear the file."
 		);
 	}
 }

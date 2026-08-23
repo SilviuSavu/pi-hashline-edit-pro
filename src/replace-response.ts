@@ -104,7 +104,7 @@ export function buildNoop(input: NoopInput): TResult {
 		: "The edit produced identical content.";
 	const dedupNote =
 		boundaryRemovedLines !== undefined && boundaryRemovedLines > 0
-			? `\nBoundary dedup removed ${boundaryRemovedLines} line(s) from the replacement; resend the identical edit to apply it literally.`
+			? `\nBoundary dedup removed ${boundaryRemovedLines} line(s) from the replacement. Send the same edit again to apply it literally.`
 			: "";
 
 	const text = `No changes made to ${path}\nClassification: noop\n${noopDetailsText}${dedupNote}${warnBlock(warnings)}`;

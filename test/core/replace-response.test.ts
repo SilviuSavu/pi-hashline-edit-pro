@@ -68,7 +68,7 @@ describe("buildNoop", () => {
       boundaryRemovedLines: 1,
     });
     expect(result.content[0].text).toContain("Boundary dedup removed 1 line(s) from the replacement");
-    expect(result.content[0].text).toContain("resend the identical edit to apply it literally");
+    expect(result.content[0].text).toContain("Send the same edit again to apply it literally");
   });
   it("omits the dedup note when nothing was removed", () => {
     const result = buildNoop({

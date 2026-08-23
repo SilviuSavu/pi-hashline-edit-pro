@@ -42,7 +42,7 @@ describe("boundary dedup noop bypass", () => {
 
       const second = await editTool.execute("e2", payload, undefined, undefined, ctx);
       expect(getText(second)).toContain("Successfully replaced");
-      expect(getText(second)).toContain("[E_BOUNDARY_BYPASS] Boundary dedup was off for this call and is restored.");
+      expect(getText(second)).toContain("[E_BOUNDARY_BYPASS] Boundary dedup was off for this call and is back on.");
       expect(await readFile(path, "utf-8")).toBe("aaa\nbbb\nccc\nccc\n");
 
       const third = await editTool.execute("e3", payload, undefined, undefined, ctx);
