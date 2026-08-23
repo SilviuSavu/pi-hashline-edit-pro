@@ -50,14 +50,19 @@ export function getPreviewInput(
 	return request;
 }
 
+type DiffRowKind = "added" | "removed" | "context";
+
+function diffRowKind(line: string): DiffRowKind {
+	if (line.startsWith("+") && !line.startsWith("+++")) return "added";
+	if (line.startsWith("-") && !line.startsWith("---")) return "removed";
+	return "context";
+}
+
 export function colorLines(lines: string[], theme: FgT): string[] {
 	return lines.map((line) => {
-		if (line.startsWith("+") && !line.startsWith("+++")) {
-			return theme.fg("success", line);
-		}
-		if (line.startsWith("-") && !line.startsWith("---")) {
-			return theme.fg("error", line);
-		}
+		const kind = diffRowKind(line);
+		if (kind === "added") return theme.fg("success", line);
+		if (kind === "removed") return theme.fg("error", line);
 		return theme.fg("dim", line);
 	});
 }
@@ -194,12 +199,9 @@ export function mkMdTheme(theme: MdTheme) {
 		highlightCode: (code: string, lang?: string) =>
 			code.split("\n").map((line) => {
 				if (lang === "diff") {
-					if (line.startsWith("+") && !line.startsWith("+++")) {
-						return theme.fg("toolDiffAdded", line);
-					}
-					if (line.startsWith("-") && !line.startsWith("---")) {
-						return theme.fg("toolDiffRemoved", line);
-					}
+					const kind = diffRowKind(line);
+					if (kind === "added") return theme.fg("toolDiffAdded", line);
+					if (kind === "removed") return theme.fg("toolDiffRemoved", line);
 					return theme.fg("toolDiffContext", line);
 				}
 

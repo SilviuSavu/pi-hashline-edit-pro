@@ -142,7 +142,7 @@ export async function writeAtomic(
     }
     await tempHandle.sync();
   } catch (error: unknown) {
-    await tempHandle.close();
+    try { await tempHandle.close(); } catch {}
     try { await rm(tempPath, { force: true }); } catch {}
     throw error;
   }
