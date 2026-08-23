@@ -90,7 +90,7 @@ export function fmtMismatchWithHashes(
   const refList = notFound.map((m) => `"${m.ref.hash}"`).join(", ");
   if (notFound.length > 0) {
     out.push(
-      `[E_STALE_ANCHOR] ${notFound.length} stale anchor${notFound.length > 1 ? "s" : ""}${filePath ? ` in ${filePath}` : ""}: ${refList}. The file content has changed since those anchors were read. Call read() to get fresh anchors, then copy the 3-char HASH of the start and end of the range you are replacing into remove_from and remove_to of your next replace call.`
+      `[E_STALE_ANCHOR] ${notFound.length} stale anchor${notFound.length > 1 ? "s" : ""}${filePath ? ` in ${filePath}` : ""}: ${refList}. The file changed since read. Call read() for fresh anchors.`
     );
     for (const m of notFound) {
       const ctx = m.context;
@@ -109,7 +109,7 @@ export function fmtMismatchWithHashes(
   if (ambiguous.length > 0) {
     if (out.length > 0) out.push("");
     out.push(
-      `[E_AMBIGUOUS_ANCHOR] ${ambiguous.length} ambiguous anchor${ambiguous.length > 1 ? "s" : ""}${filePath ? ` in ${filePath}` : ""}. Call read() to get fresh anchors, then copy the 3-char HASH of the start and end of the range you are replacing into remove_from and remove_to of your next replace call.`
+      `[E_AMBIGUOUS_ANCHOR] ${ambiguous.length} ambiguous anchor${ambiguous.length > 1 ? "s" : ""}${filePath ? ` in ${filePath}` : ""}. Call read() for fresh anchors.`
     );
     for (const m of ambiguous) {
       const sample = (m.candidates ?? []).slice(0, 5);
@@ -150,7 +150,7 @@ function assertItem(edit: Record<string, unknown>): void {
     );
   }
   if (!("replacement_lines" in edit)) {
-    throw new Error(`[E_BAD_SHAPE] The edit requires a "replacement_lines" field. Provide the replacement lines as an array of strings (use [] to delete).`);
+    throw new Error(`[E_BAD_SHAPE] The edit requires a "replacement_lines" array (use [] to delete).`);
   }
   if (!Array.isArray(edit.replacement_lines) || edit.replacement_lines.some((line) => typeof line !== "string")) {
     throw new Error(NEW_CONTENT_NOT_ARRAY_MSG);
@@ -174,11 +174,11 @@ export function resEdit(edit: HTEdit, warnings?: string[]): HEdit {
     if (match) {
       let message: string;
       if (match[1] === "+") {
-        message = `[E_BAD_REF] Autocorrected: stripped diff-preview marker copied from the diff preview in remove_from/remove_to entry "${trimmed}".`;
+        message = `[E_BAD_REF] Stripped diff-preview marker from remove_from/remove_to entry "${trimmed}".`;
       } else if (match[1] === "-") {
-        message = `[E_BAD_REF] Autocorrected: stripped leading "-" marker in remove_from/remove_to entry "${trimmed}".`;
+        message = `[E_BAD_REF] Stripped leading "-" marker from remove_from/remove_to entry "${trimmed}".`;
       } else {
-        message = `[E_BAD_REF] Autocorrected: stripped "HASH│" prefix copied from read output in remove_from/remove_to entry "${trimmed}".`;
+        message = `[E_BAD_REF] Stripped "HASH│" prefix from remove_from/remove_to entry "${trimmed}".`;
       }
       warnings?.push(message);
       return match[2]!;
@@ -197,7 +197,7 @@ function warnUnicodeEsc(
 ): void {
   if (edit.content_lines.some((line) => /\\uDDDD/i.test(line))) {
     warnings.push(
-      "Detected literal \\uDDDD in edit content; no autocorrection applied. Verify whether this should be a real Unicode escape or plain text.",
+      "Detected literal \\uDDDD in edit content; no autocorrection applied.",
     );
   }
 }
@@ -220,16 +220,12 @@ export function stripBarePrefixes(
 		.map((s) => `replacement_lines line ${s.lineIndex + 1}`)
 		.join(", ");
 	const matchedCount = stripped.filter((s) => s.matched).length;
-	const evidence =
-		matchedCount === 0
-			? "none of the stripped hashes match current file lines"
-			: `${matchedCount} of ${stripped.length} stripped hash(es) match current file lines`;
 	const guidance =
 		matchedCount === 0
-			? " Verify that these lines were pasted from read output; literal content starting with 'HASH│' would be altered by this strip."
+			? " Verify it was pasted from read output."
 			: "";
 	warnings.push(
-		`[E_BARE_HASH_PREFIX] Autocorrected: stripped "HASH│" prefix copied from read output in ${locations} (${evidence}).${guidance}`
+		`[E_BARE_HASH_PREFIX] Stripped "HASH│" prefix from ${locations}.${guidance}`
 	);
 	return { ...edit, content_lines: contentLines };
 }
@@ -255,7 +251,7 @@ export function stripDiffPrefixes(
 	if (stripped.length === 0) return edit;
 	const locations = stripped.map((i) => `replacement_lines line ${i + 1}`).join(", ");
 	warnings.push(
-		`[E_INVALID_PATCH] Autocorrected: stripped diff-preview marker copied from the diff preview in ${locations}.`
+		`[E_INVALID_PATCH] Stripped diff-preview marker from ${locations}.`
 	);
 	return { ...edit, content_lines: contentLines };
 }
@@ -280,7 +276,7 @@ export function swapReversedRanges(
 		return edit;
 	}
 	warnings.push(
-		`[E_BAD_OP] Autocorrected: remove_from and remove_to were reversed (remove_from ${startRef.hash} is after remove_to ${endRef.hash}); swapped the pair.`
+		`[E_BAD_OP] Autocorrected: remove_from/remove_to were reversed; swapped them.`
 	);
 	return { ...edit, hash_bounds: [endRef, startRef] as [Anchor, Anchor] };
 }
@@ -533,7 +529,7 @@ export function assertRangeServed(
       ? `\n\n[The range has ${rangeLength} lines; showing the first ${shownLength}. Call read() with offset=${startLine + shownLength} to see the rest.]`
       : "";
   const message =
-    `[E_RANGE_STALE] ${mismatchText} what was previously shown: the file changed on disk after the anchors were read, or the line(s) were never shown. Nothing was modified. Current range with fresh anchors:\n\n${rows.join("\n")}${capHint}`;
+    `[E_RANGE_STALE] ${mismatchText} what was shown. Nothing was modified. Current range with fresh anchors:\n\n${rows.join("\n")}${capHint}`;
   throw new RangeStaleError(message, first, shownHashes);
 }
 

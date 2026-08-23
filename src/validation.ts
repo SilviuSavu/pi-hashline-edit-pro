@@ -38,7 +38,7 @@ export function valKind(file: LFile, path: string): asserts file is { kind: "tex
 	}
 	if (file.kind === "too_large") {
 		throw new Error(
-			`[E_FILE_TOO_LARGE] File is too large: ${path} (${file.description}). Hashline editing targets source-sized files; for very large files use write or a non-line-based approach.`,
+			`[E_FILE_TOO_LARGE] File is too large: ${path} (${file.description}). For very large files, use write.`,
 		);
 	}
 }

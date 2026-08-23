@@ -136,7 +136,7 @@ export function assertReq(
     request.replacement_lines.some((line) => typeof line !== "string")
   ) {
     throw new Error(
-      '[E_BAD_SHAPE] Edit request requires "remove_from", "remove_to", and "replacement_lines" at the top level. replacement_lines must be an array of strings, one element per line (use [] to delete).',
+      '[E_BAD_SHAPE] Edit request requires "remove_from", "remove_to", and "replacement_lines" (array of strings, one per line; use [] to delete).',
     );
   }
 }
@@ -166,12 +166,12 @@ async function resolveMissingPath(
   if (matches.length === 1) {
     return {
       path: matches[0]!,
-      warning: `[E_BAD_SHAPE] Autocorrected: missing "path" resolved to ${matches[0]} — the only file whose stored hashes contain both anchors.`,
+      warning: `[E_BAD_SHAPE] Autocorrected: missing "path" resolved to ${matches[0]}.`,
     };
   }
   if (matches.length > 1) {
     throw new Error(
-      `[E_BAD_SHAPE] Edit request requires a non-empty "path" string; the anchors match multiple known files: ${matches.join(", ")}. Include the intended path.`,
+      `[E_BAD_SHAPE] Edit request requires a non-empty "path" string; the anchors match multiple known files: ${matches.join(", ")}.`,
     );
   }
   return undefined;
@@ -515,7 +515,7 @@ export function buildToolDef(): ToolDef {
           warnings.unshift(resolution.warning);
         }
         if (boundaryBypass && originalNormalized !== result) {
-          warnings.push("[E_BOUNDARY_BYPASS] Boundary dedup was off for this call. Boundary dedup is now restored.");
+          warnings.push("[E_BOUNDARY_BYPASS] Boundary dedup was off for this call and is restored.");
         }
 
         const editsAttempted = 1;
@@ -555,7 +555,7 @@ export function buildToolDef(): ToolDef {
         });
         if (!undo.persisted) {
           throw new Error(
-            `[E_UNDO_UNAVAILABLE] Cannot persist undo history to the hash store; the edit was NOT applied and ${path} is unchanged. Retry the replace, or use write if the store cannot be recovered.`
+            `[E_UNDO_UNAVAILABLE] Could not persist undo history; the edit was NOT applied and ${path} is unchanged.`
           );
         }
         try {

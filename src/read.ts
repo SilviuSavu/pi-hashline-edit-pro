@@ -72,7 +72,7 @@ export async function fmtReadPreview(
 			};
 		}
 		return {
-			text: `Offset ${startLine} is beyond end of file (0 lines total). The file is empty. Use replace to insert content.`,
+			text: `Offset ${startLine} is beyond end of file (0 lines). Use replace to insert content.`,
 			servedHashes: [],
 		};
 	}
@@ -114,7 +114,7 @@ export async function fmtReadPreview(
 		const lineLabel = oversized.length === 1 ? `Line ${oversized[0]!.lineNumber}` : `Lines ${oversized.map((row) => row.lineNumber).join(", ")}`;
 		const verb = oversized.length === 1 ? "exceeds" : "exceed";
 		const addresses = oversized.map((row) => `${row.lineNumber}p`).join(";");
-		const warning = `[${lineLabel} ${verb} ${formatSize(maxBytes)}; content not shown because hashline anchors require full lines. Inspect with bash: sed -n '${addresses}' <path> | head -c ${maxBytes}]`;
+		const warning = `[${lineLabel} ${verb} ${formatSize(maxBytes)}; content not shown. Inspect with bash: sed -n '${addresses}' <path> | head -c ${maxBytes}]`;
 		let preview = skippedTruncation.content;
 		let nextOffset: number | undefined;
 		if (shownRowCount > 0 && (skippedTruncation.truncated || lastShownLine < totalLines)) {

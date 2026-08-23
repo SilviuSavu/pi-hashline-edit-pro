@@ -17,7 +17,7 @@ describe("applyEdit — recovery scenarios", () => {
       remove_to: hashes[1]!, replacement_lines: ["X"] },
     ));
     expect(result.content).toBe("a\nX\ne");
-    expect(result.warnings?.[0]).toMatch(/Autocorrected: remove_from and remove_to were reversed/);
+    expect(result.warnings?.[0]).toMatch(/Autocorrected: remove_from\/remove_to were reversed/);
   });
 
   it("rejects stale anchor", async () => {
@@ -103,19 +103,19 @@ describe("applyEdit — recovery scenarios", () => {
   it("rejects missing replacement_lines", () => {
     const edit = { remove_from: "ZZZ",
     remove_to: "ZZZ" } as any;
-    expect(() => resEdit(edit)).toThrow(/requires a "replacement_lines" field/);
+    expect(() => resEdit(edit)).toThrow(/requires a "replacement_lines" array/);
   });
 
   it("rejects null replacement_lines", () => {
     const edit = { remove_from: "ZZZ",
     remove_to: "ZZZ", replacement_lines: null } as any;
-    expect(() => resEdit(edit)).toThrow(/must be an array of strings.*not a single string/);
+    expect(() => resEdit(edit)).toThrow(/must be an array of strings/);
   });
 
   it("rejects a single string replacement_lines", () => {
     const edit = { remove_from: "ZZZ",
     remove_to: "ZZZ", replacement_lines: "hello" } as any;
-    expect(() => resEdit(edit)).toThrow(/must be an array of strings.*not a single string/);
+    expect(() => resEdit(edit)).toThrow(/must be an array of strings/);
   });
 
   it("accepts array replacement_lines", () => {
@@ -139,7 +139,7 @@ describe("applyEdit — recovery scenarios", () => {
       remove_to: hashes[2]!, replacement_lines: [`${hashes[1]!}│b`, `X`] },
     ));
     expect(result.content).toBe("a\nb\nX\nd\ne");
-    expect(result.warnings?.[0]).toMatch(/stripped "HASH│" prefix/);
+    expect(result.warnings?.[0]).toMatch(/Stripped "HASH│" prefix/);
   });
 
   it("strips diff preview rows in content_lines", async () => {
@@ -150,7 +150,7 @@ describe("applyEdit — recovery scenarios", () => {
       remove_to: hashes[1]!, replacement_lines: [`+${hashes[1]!}│B`] },
     ));
     expect(result.content).toBe("a\nB\nc");
-    expect(result.warnings?.[0]).toMatch(/stripped diff-preview marker/);
+    expect(result.warnings?.[0]).toMatch(/Stripped diff-preview marker/);
   });
 
   it("warns on unicode escape sequences in content", async () => {

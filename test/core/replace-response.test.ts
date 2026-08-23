@@ -67,7 +67,7 @@ describe("buildNoop", () => {
       warnings: undefined,
       boundaryRemovedLines: 1,
     });
-    expect(result.content[0].text).toContain("Boundary duplication detection removed 1 line(s) from the replacement");
+    expect(result.content[0].text).toContain("Boundary dedup removed 1 line(s) from the replacement");
     expect(result.content[0].text).toContain("resend the identical edit to apply it literally");
   });
   it("omits the dedup note when nothing was removed", () => {
@@ -78,7 +78,7 @@ describe("buildNoop", () => {
       editMeta: { editsAttempted: 1, noopEditsCount: 1, addedLines: 0, removedLines: 0 },
       warnings: undefined,
     });
-    expect(result.content[0].text).not.toContain("Boundary duplication detection");
+    expect(result.content[0].text).not.toContain("Boundary dedup removed");
   });
 });
 

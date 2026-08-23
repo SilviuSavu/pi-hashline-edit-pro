@@ -18,7 +18,7 @@ function diagRef(ref: string): string {
 	}
 
 	if (trimmed.includes("│")) {
-		return `[E_BAD_REF] Invalid anchor "${trimmed}". remove_from and remove_to must contain the 3-char hash only — remove everything from "│" onward.`;
+		return `[E_BAD_REF] Invalid anchor "${trimmed}": use only the 3-char hash, drop everything from "│" onward.`;
 	}
 
 	return `[E_BAD_REF] Invalid anchor "${trimmed}". Expected a 3-char alphanumeric anchor (e.g. "aB3").`;
@@ -52,7 +52,7 @@ export function parseText(edit: string[], warnings?: string[]): string[] {
   }
   if (split) {
     warnings?.push(
-      "[E_BAD_SHAPE] Autocorrected: split replacement_lines element(s) containing embedded newlines into separate lines.",
+      "[E_BAD_SHAPE] Autocorrected: split embedded newlines in replacement_lines into separate lines.",
     );
   }
   return out;

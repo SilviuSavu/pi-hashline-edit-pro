@@ -110,7 +110,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
           content: [
             {
               type: "text",
-              text: `No undo history for ${path}. There is no previous replace to revert.`,
+              text: `No undo history for ${path}.`,
             },
           ],
           isError: true,
@@ -132,7 +132,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
             content: [
               {
                 type: "text",
-                text: `[E_UNDO_STALE] Cannot undo last replace on ${path}: the file no longer exists. Call read() to inspect the current state.`
+                text: `[E_UNDO_STALE] Cannot undo last replace on ${path}: the file no longer exists.`
               },
             ],
             isError: true,
@@ -145,7 +145,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
             content: [
               {
                 type: "text",
-                text: `[E_UNDO_STALE] Cannot undo last replace on ${path}: the file was modified after the replace, so undoing would overwrite those changes. Call read() to inspect the current state.`
+                text: `[E_UNDO_STALE] Cannot undo last replace on ${path}: the file changed after the replace. Call read() to inspect the current state.`
               },
             ],
             isError: true,
@@ -182,11 +182,11 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
         ];
         if (linesAddedByReplace > 0 || linesRemovedByReplace > 0) {
           parts.push(
-            `Removed ${linesAddedByReplace} line(s) that were added and restored ${linesRemovedByReplace} line(s) that were removed.`,
+            `Removed ${linesAddedByReplace} line(s), restored ${linesRemovedByReplace} line(s).`,
           );
         }
         parts.push(
-          "File reverted to previous state. Call `read` to get fresh anchors for follow-up edits.",
+          "Call read for fresh anchors.",
         );
 
         return {

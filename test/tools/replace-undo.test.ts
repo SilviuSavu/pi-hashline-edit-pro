@@ -617,7 +617,7 @@ describe("undo_last_replace", () => {
       const undoResult = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, ctx);
       expect(undoResult.isError).toBe(true);
       expect(getText(undoResult)).toMatch(/E_UNDO_STALE/);
-      expect(getText(undoResult)).toMatch(/modified after the replace/i);
+      expect(getText(undoResult)).toMatch(/changed after the replace/i);
 
       const content = await readFile(join(cwd, "sample.ts"), "utf-8");
       expect(content).toBe("aaa\nEXTERNAL\nccc\n");

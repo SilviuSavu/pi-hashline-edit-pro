@@ -377,7 +377,7 @@ describe("replace diff in model-visible text", () => {
       register(pi);
       const handler = handlers.get("tool_result");
       const diff = " aaa\n-   │bbb\n+XYZ│BBB\n ccc";
-      const summary = "Successfully replaced in warn.txt. Added 1 line(s), removed 1 line(s).\n\nWarnings:\n[E_BARE_HASH_PREFIX] Autocorrected: stripped \"HASH│\" prefix copied from read output in replacement_lines line 1.";
+      const summary = "Successfully replaced in warn.txt. Added 1 line(s), removed 1 line(s).\n\nWarnings:\n[E_BARE_HASH_PREFIX] Stripped \"HASH│\" prefix from replacement_lines line 1.";
 
       const result = await handler!(
         {
@@ -436,7 +436,7 @@ describe("replace diff in model-visible text", () => {
             diff,
             metrics: { classification: "applied", changed_lines: { first: 2, last: 2 } },
           },
-          content: [{ type: "text", text: "Undone last replace on undo.txt.\nFile reverted to previous state. Call `read` to get fresh anchors for follow-up edits." }],
+          content: [{ type: "text", text: "Undone last replace on undo.txt.\nCall read for fresh anchors." }],
         },
         { cwd: dir },
       );

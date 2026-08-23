@@ -70,7 +70,7 @@ function nextZeroBit(bits: Uint32Array, start: number): number {
     if (idx >= totalBits) idx -= totalBits;
   }
   throw new Error(
-    `[E_FILE_TOO_LARGE] Cannot allocate a unique hash anchor: the file exceeds the ${HASH_SPACE}-line limit for ${HASH_LEN}-char hashline anchors. For very large files use write or a non-line-based approach.`,
+    `[E_FILE_TOO_LARGE] File exceeds the ${HASH_SPACE}-line hashline limit; use write for very large files.`,
   );
 }
 

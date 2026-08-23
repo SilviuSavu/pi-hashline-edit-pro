@@ -15,7 +15,7 @@ describe("parseHashRef", () => {
 
 	it("rejects a full HASH│content line copied into remove_from/remove_to", () => {
 		expect(() => parseHashRef("aB3│const x = 1;")).toThrow(
-			/remove_from and remove_to must contain the 3-char hash only/,
+			/use only the 3-char hash, drop everything from "│" onward/,
 		);
 	});
 	it("rejects leading >>> markers (strict mode: no marker stripping)", () => {
@@ -69,7 +69,7 @@ describe("parseText", () => {
 
 	it("rejects a single string input with clear error (must use array)", () => {
 		expect(() => parseText("a\nb" as unknown as string[])).toThrow(
-			/must be an array of strings.*not a single string/,
+			/must be an array of strings/,
 		);
 	});
 
@@ -97,7 +97,7 @@ describe("parseText", () => {
 		const warnings: string[] = [];
 		expect(parseText(["a\r\nb\rc"], warnings)).toEqual(["a", "b", "c"]);
 		expect(warnings).toHaveLength(1);
-		expect(warnings[0]).toMatch(/split replacement_lines element/);
+		expect(warnings[0]).toMatch(/split embedded newlines in replacement_lines/);
 	});
 
 	it("does not warn when no element contains embedded newlines", () => {

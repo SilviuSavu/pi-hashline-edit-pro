@@ -143,7 +143,7 @@ export async function loadFileKindAndText(
         }
         if (newlineCount > options.maxLines) {
           throw new Error(
-            `[E_FILE_TOO_LARGE] ${options.displayPath ?? filePath} has more than ${options.maxLines} lines, exceeding the ${options.maxLines}-line edit limit. Hashline editing targets source-sized files; for very large files use write or a non-line-based approach.`,
+            `[E_FILE_TOO_LARGE] ${options.displayPath ?? filePath} has more than ${options.maxLines} lines, exceeding the ${options.maxLines}-line hashline limit. For very large files, use write.`,
           );
         }
       }

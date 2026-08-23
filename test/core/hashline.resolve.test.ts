@@ -40,7 +40,7 @@ describe("resEdit", () => {
       replacement_lines: "hello",
     } as unknown as HTEdit;
     expect(() => resEdit(edit)).toThrow(
-      /must be an array of strings.*not a single string/i,
+      /must be an array of strings/i,
     );
   });
 
@@ -68,7 +68,7 @@ describe("resEdit", () => {
       replacement_lines: null,
 		} as unknown as HTEdit;
 		expect(() => resEdit(edit)).toThrow(
-      /must be an array of strings.*not a single string/i,
+      /must be an array of strings/i,
 		);
 	});
 
@@ -82,7 +82,7 @@ describe("resEdit", () => {
 	it("rejects missing replacement_lines", () => {
 		const edit = { remove_from: "ZZP", remove_to: "ZZP" } as any;
 		expect(() => resEdit(edit)).toThrow(
-      /requires a "replacement_lines" field/i,
+      /requires a "replacement_lines" array/i,
 		);
 	});
 
@@ -94,7 +94,7 @@ describe("resEdit", () => {
 		expect(resolved.hash_bounds[1].hash).toBe("MQX");
 		expect(warnings).toHaveLength(2);
 		expect(warnings[0]).toMatch(/^\[E_BAD_REF\]/);
-		expect(warnings[0]).toContain('stripped "HASH│" prefix');
+		expect(warnings[0]).toContain('Stripped "HASH│" prefix');
 		expect(warnings[0]).toContain("remove_from/remove_to entry");
 	});
 
@@ -106,7 +106,6 @@ describe("resEdit", () => {
 		expect(resolved.hash_bounds[1].hash).toBe("MQX");
 		expect(warnings).toHaveLength(2);
 		expect(warnings[0]).toContain("diff-preview marker");
-		expect(warnings[0]).toContain("copied from the diff preview");
 		expect(warnings[1]).toContain('leading "-" marker');
 	});
 

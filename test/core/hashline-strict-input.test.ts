@@ -16,9 +16,8 @@ describe("edit input validation", () => {
 		const toolEdit: HTEdit = { remove_from: hashes[0]!, remove_to: hashes[0]!, replacement_lines: [`${hashes[0]!}│FOO`] };
     const result = applyEdit(file, resEdit(toolEdit));
 		expect(result.content).toBe("FOO\nbar");
-		expect(result.warnings?.[0]).toMatch(/Autocorrected: stripped "HASH│" prefix/);
+		expect(result.warnings?.[0]).toMatch(/Stripped "HASH│" prefix/);
 		expect(result.warnings?.[0]).toMatch(/replacement_lines line 1/);
-		expect(result.warnings?.[0]).toMatch(/1 of 1 stripped hash\(es\) match current file lines/);
 	});
 
 	it("rejects a single string replacement_lines before patch-prefix validation", () => {
@@ -27,7 +26,7 @@ describe("edit input validation", () => {
       remove_to: "ZZZ", replacement_lines: "+ZZZ:foo",
     } as unknown as HTEdit;
     expect(() => resEdit(toolEdit)).toThrow(
-      /must be an array of strings.*not a single string/i,
+      /must be an array of strings/i,
     );
 	});
 
@@ -69,8 +68,8 @@ describe("partial hash prefixes copied into content (issue #24)", () => {
       remove_to: anchor, replacement_lines: [`${betaHash}│### heading`, `real content`] },
     hashes);
     expect(result.content).toBe("### heading\nreal content\nbeta\ngamma\ndelta");
-    expect(result.warnings?.[0]).toMatch(/1 of 1 stripped hash\(es\) match current file lines/);
-    expect(result.warnings?.[0]).not.toMatch(/literal content/);
+    expect(result.warnings?.[0]).toMatch(/Stripped "HASH│" prefix/);
+    expect(result.warnings?.[0]).not.toMatch(/Verify/);
 	});
 
 	it("strips a bare prefix whose hash exists in the file hash set", async () => {
@@ -82,7 +81,7 @@ describe("partial hash prefixes copied into content (issue #24)", () => {
       remove_to: anchor, replacement_lines: [`${gammaHash}│text`] },
     hashes);
     expect(result.content).toBe("text\nbeta\ngamma\ndelta");
-    expect(result.warnings?.[0]).toMatch(/1 of 1 stripped hash\(es\) match current file lines/);
+    expect(result.warnings?.[0]).toMatch(/Stripped "HASH│" prefix/);
 	});
 
 	it("strips bare prefixes even when the hash is not in the file hash set", async () => {
@@ -93,8 +92,8 @@ describe("partial hash prefixes copied into content (issue #24)", () => {
       remove_to: anchor, replacement_lines: ["ZZZ│one", "ZZP│two"] },
     hashes);
     expect(result.content).toBe("one\ntwo\nbeta\ngamma\ndelta");
-    expect(result.warnings?.[0]).toMatch(/none of the stripped hashes match current file lines/);
-    expect(result.warnings?.[0]).toMatch(/literal content/);
+    expect(result.warnings?.[0]).toMatch(/Stripped "HASH│" prefix/);
+    expect(result.warnings?.[0]).toMatch(/Verify it was pasted from read output/);
 	});
 
 	it("reports the replacement_lines line for each stripped line", async () => {
@@ -168,7 +167,7 @@ describe("diff preview rows copied into content", () => {
       remove_to: anchor, replacement_lines: [`+${hashes[1]!}│### heading`, `real content`] },
     hashes);
 		expect(result.content).toBe("### heading\nreal content\nbeta\ngamma\ndelta");
-		expect(result.warnings?.[0]).toMatch(/Autocorrected: stripped diff-preview marker/);
+		expect(result.warnings?.[0]).toMatch(/Stripped diff-preview marker/);
 		expect(result.warnings?.[0]).toMatch(/replacement_lines line 1/);
 	});
 
@@ -254,7 +253,7 @@ describe("diff-prefix false-positive guards (tightened shapes)", () => {
       remove_to: anchor, replacement_lines: [`+${hashes[1]!}│one`] },
     hashes);
 		expect(result.content).toBe("one\nbeta\ngamma\ndelta");
-		expect(result.warnings?.[0]).toMatch(/stripped diff-preview marker/);
+		expect(result.warnings?.[0]).toMatch(/Stripped diff-preview marker/);
 	});
 
 	it("still strips exact -HASH│ and -   │ rows", async () => {
@@ -265,7 +264,7 @@ describe("diff-prefix false-positive guards (tightened shapes)", () => {
       remove_to: anchor, replacement_lines: [`-${hashes[1]!}│one`, `-   │two`] },
     hashes);
 		expect(result.content).toBe("one\ntwo\nbeta\ngamma\ndelta");
-		expect(result.warnings?.[0]).toMatch(/stripped diff-preview marker/);
+		expect(result.warnings?.[0]).toMatch(/Stripped diff-preview marker/);
 	});
 });
 
@@ -285,8 +284,8 @@ describe("truncated hash prefixes copied into content (issue #27)", () => {
 			hashes);
 		expect(result.content).toBe("                        }\nbeta\ngamma\ndelta");
 		expect(result.content).not.toContain("│");
-		expect(result.warnings?.[0]).toMatch(/stripped "HASH│" prefix/);
-		expect(result.warnings?.[0]).toMatch(/none of the stripped hashes match current file lines/);
+		expect(result.warnings?.[0]).toMatch(/Stripped "HASH│" prefix/);
+		expect(result.warnings?.[0]).toMatch(/Verify it was pasted from read output/);
 	});
 
 	it("strips a 1-char prefix pasted from read output", async () => {
@@ -297,7 +296,7 @@ describe("truncated hash prefixes copied into content (issue #27)", () => {
 			remove_to: anchor, replacement_lines: ["a│one"] },
 			hashes);
 		expect(result.content).toBe("one\nbeta\ngamma\ndelta");
-		expect(result.warnings?.[0]).toMatch(/stripped "HASH│" prefix/);
+		expect(result.warnings?.[0]).toMatch(/Stripped "HASH│" prefix/);
 	});
 
 	it("strips truncated +HASH│ and -HASH│ diff rows with warning", async () => {
@@ -308,7 +307,7 @@ describe("truncated hash prefixes copied into content (issue #27)", () => {
 			remove_to: anchor, replacement_lines: ["+L3│one", "-L3│two"] },
 			hashes);
 		expect(result.content).toBe("one\ntwo\nbeta\ngamma\ndelta");
-		expect(result.warnings?.[0]).toMatch(/stripped diff-preview marker/);
+		expect(result.warnings?.[0]).toMatch(/Stripped diff-preview marker/);
 	});
 
 	it("strips a 4-char prefix pasted from read output", async () => {
@@ -319,8 +318,8 @@ describe("truncated hash prefixes copied into content (issue #27)", () => {
 			remove_to: anchor, replacement_lines: ["abcd│literal"] },
 			hashes);
 		expect(result.content).toBe("literal\nbeta\ngamma\ndelta");
-		expect(result.warnings?.[0]).toMatch(/stripped "HASH│" prefix/);
-		expect(result.warnings?.[0]).toMatch(/none of the stripped hashes match current file lines/);
+		expect(result.warnings?.[0]).toMatch(/Stripped "HASH│" prefix/);
+		expect(result.warnings?.[0]).toMatch(/Verify it was pasted from read output/);
 	});
 
 	it("leaves a 7-char run before the separator as literal content", async () => {
@@ -353,6 +352,6 @@ describe("truncated hash prefixes copied into content (issue #27)", () => {
 				warnings,
 			),
 		).toThrow(/E_BAD_REF/);
-		expect(warnings[0]).toMatch(/stripped "HASH│" prefix/);
+		expect(warnings[0]).toMatch(/Stripped "HASH│" prefix/);
 	});
 });

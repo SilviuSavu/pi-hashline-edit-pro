@@ -91,7 +91,7 @@ export async function readNormFile(
     const lineCount = visLines(normalized).length;
     if (lineCount > options.maxLines) {
       throw new Error(
-        `[E_FILE_TOO_LARGE] ${path} has ${lineCount} lines, exceeding the ${options.maxLines}-line edit limit. Hashline editing targets source-sized files; for very large files use write or a non-line-based approach.`,
+        `[E_FILE_TOO_LARGE] ${path} has ${lineCount} lines, exceeding the ${options.maxLines}-line hashline limit. For very large files, use write.`,
       );
     }
   }
