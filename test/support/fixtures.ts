@@ -232,6 +232,14 @@ export function expectedEditContent(
   if (e === lines.length && repl.length === 0 && s >= 2 && lines[s - 2]!.length === 0) {
     return expected + "\n";
   }
+  if (
+    e === lines.length &&
+    repl.length > 0 &&
+    repl[repl.length - 1]!.length === 0 &&
+    !(lines.length === 1 && lines[0]!.length === 0 && repl.length === 1 && repl[0]!.length === 0)
+  ) {
+    return expected + "\n";
+  }
   return expected;
 }
 

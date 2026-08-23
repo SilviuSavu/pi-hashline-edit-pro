@@ -84,11 +84,19 @@ function resToSpan(
   }
 
   if (edit.content_lines.length > 0) {
+    const lastReplacementLine = edit.content_lines[edit.content_lines.length - 1]!;
+    const endsWithBlank = lastReplacementLine.length === 0;
+    const endsAtEofWithoutNewline =
+      endLine === fileLines.length && !content.endsWith("\n");
+    const replacement = edit.content_lines.join("\n");
     return {
       kind: "replace",
       start: lineStarts[startLine - 1]!,
       end: lineStarts[endLine - 1]! + fileLines[endLine - 1]!.length,
-      replacement: edit.content_lines.join("\n"),
+      replacement:
+        endsAtEofWithoutNewline && endsWithBlank
+          ? `${replacement}\n`
+          : replacement,
     };
   }
 

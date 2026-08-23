@@ -486,3 +486,82 @@ describe("applyEdit — trailing blank lines (no trailing-newline special case)"
     expect(result.content).toBe("aaa\nX\n\nccc\n");
   });
 });
+
+describe("applyEdit — trailing blank at EOF without trailing newline", () => {
+  it('keeps [""] as a blank line when replacing the last line', async () => {
+    const content = "aaa\nbbb";
+    const edit = resEdit({
+      remove_from: (await makeTag(content, 2, home.testPath)).hash,
+      remove_to: (await makeTag(content, 2, home.testPath)).hash,
+      replacement_lines: [""],
+    });
+    const result = applyEdit(content, edit);
+    expect(result.content).toBe("aaa\n\n");
+  });
+
+  it('keeps a trailing blank after a non-empty replacement line', async () => {
+    const content = "aaa\nbbb";
+    const edit = resEdit({
+      remove_from: (await makeTag(content, 2, home.testPath)).hash,
+      remove_to: (await makeTag(content, 2, home.testPath)).hash,
+      replacement_lines: ["x", ""],
+    });
+    const result = applyEdit(content, edit);
+    expect(result.content).toBe("aaa\nx\n\n");
+  });
+
+  it("keeps multiple trailing blanks at the end of a no-trailing-newline file", async () => {
+    const content = "aaa\nbbb";
+    const edit = resEdit({
+      remove_from: (await makeTag(content, 2, home.testPath)).hash,
+      remove_to: (await makeTag(content, 2, home.testPath)).hash,
+      replacement_lines: ["x", "", ""],
+    });
+    const result = applyEdit(content, edit);
+    expect(result.content).toBe("aaa\nx\n\n\n");
+  });
+
+  it("replaces the only line of a single-line file with a blank line", async () => {
+    const content = "aaa";
+    const edit = resEdit({
+      remove_from: (await makeTag(content, 1, home.testPath)).hash,
+      remove_to: (await makeTag(content, 1, home.testPath)).hash,
+      replacement_lines: [""],
+    });
+    const result = applyEdit(content, edit);
+    expect(result.content).toBe("\n");
+  });
+
+  it("keeps a middle blank and a non-empty last line unchanged", async () => {
+    const content = "aaa\nbbb";
+    const edit = resEdit({
+      remove_from: (await makeTag(content, 2, home.testPath)).hash,
+      remove_to: (await makeTag(content, 2, home.testPath)).hash,
+      replacement_lines: ["x", "", "y"],
+    });
+    const result = applyEdit(content, edit);
+    expect(result.content).toBe("aaa\nx\n\ny");
+  });
+
+  it("does not add a newline when the last replacement line is non-empty", async () => {
+    const content = "aaa\nbbb";
+    const edit = resEdit({
+      remove_from: (await makeTag(content, 2, home.testPath)).hash,
+      remove_to: (await makeTag(content, 2, home.testPath)).hash,
+      replacement_lines: ["x"],
+    });
+    const result = applyEdit(content, edit);
+    expect(result.content).toBe("aaa\nx");
+  });
+
+  it("does not add a newline for a trailing blank when the file ends with a newline", async () => {
+    const content = "aaa\nbbb\n";
+    const edit = resEdit({
+      remove_from: (await makeTag(content, 2, home.testPath)).hash,
+      remove_to: (await makeTag(content, 2, home.testPath)).hash,
+      replacement_lines: ["x", ""],
+    });
+    const result = applyEdit(content, edit);
+    expect(result.content).toBe("aaa\nx\n\n");
+  });
+});

@@ -205,7 +205,18 @@ describe("property: sequential random edits", () => {
         current = result.content;
       }
       let expectedLines = lines;
+      let trailing = content.endsWith("\n");
       for (const span of [...applied].sort((a, b) => b.s - a.s)) {
+        const atEof = span.e === expectedLines.length;
+        if (atEof && span.repl.length === 0 && !trailing) {
+          trailing = span.s >= 2 && expectedLines[span.s - 2]!.length === 0;
+        } else if (atEof && span.repl.length > 0) {
+          const last = span.repl[span.repl.length - 1]!;
+          trailing =
+            trailing ||
+            (last.length === 0 &&
+              !(lines.length === 1 && lines[0]!.length === 0 && span.repl.length === 1 && last.length === 0));
+        }
         expectedLines = [
           ...expectedLines.slice(0, span.s - 1),
           ...span.repl,
@@ -213,16 +224,7 @@ describe("property: sequential random edits", () => {
         ];
       }
       let expected = expectedLines.join("\n");
-      const eofSpan = applied.find((sp) => sp.e === lines.length);
-      if (
-        content.endsWith("\n") ||
-        (eofSpan !== undefined &&
-          eofSpan.repl.length === 0 &&
-          eofSpan.s >= 2 &&
-          lines[eofSpan.s - 2]!.length === 0)
-      ) {
-        expected += "\n";
-      }
+      if (trailing) expected += "\n";
       expect(current).toBe(expected);
       const removedHashes = new Set<string>();
       for (const span of spans) {
