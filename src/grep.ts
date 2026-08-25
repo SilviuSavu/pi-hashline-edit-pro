@@ -140,7 +140,7 @@ async function searchFile(
   context: number,
   maxMatches: number,
 ): Promise<FileHit | undefined> {
-  const displayPath = relative(cwd, absPath);
+  const displayPath = relative(cwd, absPath).replace(/\\/g, "/");
   if (globRegex) {
     const globPath = relative(globRoot, absPath).replace(/\\/g, "/");
     if (!globRegex.test(globPath)) return undefined;
