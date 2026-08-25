@@ -47,6 +47,10 @@ function fmtDiffLine(
   return `${prefix}${hash}${HASH_SEP}${line}`;
 }
 
+function isBlankLine(line: string): boolean {
+  return line.trim().length === 0;
+}
+
 const ELLIPSIS_MARKER: unique symbol = Symbol("ellipsis");
 const isEllipsisMarker = (line: string | symbol): line is symbol =>
   line === ELLIPSIS_MARKER;
@@ -99,15 +103,52 @@ export function genDiff(
       let skipTail = 0;
 
       if (!lastWasChange) {
-        skipStart = Math.max(0, displayLines.length - contextLines);
+        let count = contextLines;
+        if (
+          contextLines > 0 &&
+          displayLines.length > count &&
+          isBlankLine(displayLines[displayLines.length - 1]!)
+        ) {
+          count += 1;
+        }
+        count = Math.min(count, displayLines.length);
+        skipStart = displayLines.length - count;
         linesToShow = displayLines.slice(skipStart);
       } else if (nextPartIsChange && displayLines.length > contextLines * 2) {
-        const tail = displayLines.slice(-contextLines);
-        linesToShow = [...displayLines.slice(0, contextLines), ELLIPSIS_MARKER, ...tail];
-        skipMiddle = displayLines.length - contextLines * 2;
+        let headCount = contextLines;
+        let tailCount = contextLines;
+        if (
+          contextLines > 0 &&
+          displayLines.length - headCount > tailCount &&
+          isBlankLine(displayLines[headCount - 1]!)
+        ) {
+          headCount += 1;
+        }
+        if (
+          contextLines > 0 &&
+          displayLines.length - tailCount > headCount &&
+          isBlankLine(displayLines[displayLines.length - tailCount]!)
+        ) {
+          tailCount += 1;
+        }
+        const middleLen = displayLines.length - headCount - tailCount;
+        if (middleLen > 0) {
+          linesToShow = [
+            ...displayLines.slice(0, headCount),
+            ELLIPSIS_MARKER,
+            ...displayLines.slice(displayLines.length - tailCount),
+          ];
+          skipMiddle = middleLen;
+        } else {
+          linesToShow = displayLines;
+        }
       } else if (!nextPartIsChange && linesToShow.length > contextLines) {
-        linesToShow = linesToShow.slice(0, contextLines);
-        skipTail = displayLines.length - contextLines;
+        let count = contextLines;
+        const firstLine = linesToShow[0];
+        if (contextLines > 0 && typeof firstLine === "string" && isBlankLine(firstLine)) count += 1;
+        count = Math.min(count, linesToShow.length);
+        linesToShow = linesToShow.slice(0, count);
+        skipTail = displayLines.length - count;
       }
 
       if (skipStart > 0) {

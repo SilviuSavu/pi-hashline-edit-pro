@@ -94,6 +94,113 @@ describe("genDiff", () => {
 	});
 });
 
+describe("genDiff - blank context line extension", () => {
+  const row = (content: string) => new RegExp(`^ [A-Za-z0-9]{3}│${content}$`, "m");
+  const blankRow = /^ [A-Za-z0-9]{3}│\s*$/m;
+
+  it("shows one more line below the change when the adjacent context line is blank", () => {
+    const { diff } = genDiff(
+      "alpha\nbeta\n\ngamma\ndelta",
+      "alpha\nBETA\n\ngamma\ndelta",
+      1,
+    );
+    const rows = diff.split("\n");
+    expect(diff).toMatch(blankRow);
+    expect(diff).toMatch(row("gamma"));
+    expect(diff).not.toMatch(row("delta"));
+    expect(rows.findIndex((l) => blankRow.test(l))).toBeLessThan(rows.findIndex((l) => row("gamma").test(l)));
+    expect(rows[rows.length - 1]!.trim()).toBe("...");
+  });
+
+  it("shows one more line above the change when the adjacent context line is blank", () => {
+    const { diff } = genDiff(
+      "alpha\n\nbeta\ngamma",
+      "alpha\n\nBETA\ngamma",
+      1,
+    );
+    const rows = diff.split("\n");
+    expect(diff).toMatch(row("alpha"));
+    expect(diff).toMatch(blankRow);
+    expect(rows.findIndex((l) => row("alpha").test(l))).toBeLessThan(rows.findIndex((l) => blankRow.test(l)));
+    expect(rows[0]!.trim()).not.toBe("...");
+  });
+
+  it("treats a whitespace-only context line as blank", () => {
+    const { diff } = genDiff(
+      "alpha\n   \nbeta",
+      "alpha\n   \nBETA",
+      1,
+    );
+    expect(diff).toMatch(row("alpha"));
+    expect(diff).toMatch(blankRow);
+  });
+
+  it("extends both sides when both adjacent context lines are blank", () => {
+    const { diff } = genDiff(
+      "alpha\n\nbeta\n\ngamma",
+      "alpha\n\nBETA\n\ngamma",
+      1,
+    );
+    const rows = diff.split("\n");
+    expect(diff).toMatch(row("alpha"));
+    expect(diff).toMatch(row("gamma"));
+    expect(rows.filter((l) => blankRow.test(l))).toHaveLength(2);
+  });
+
+  it("does not extend when the adjacent context line has content", () => {
+    const { diff } = genDiff(
+      "alpha\nbeta\ngamma\ndelta",
+      "alpha\nbeta\nGAMMA\ndelta",
+      1,
+    );
+    const contextRows = diff.split("\n").filter((l) => /^ [A-Za-z0-9]{3}│/.test(l));
+    expect(contextRows).toHaveLength(2);
+  });
+
+  it("does not extend when there are no lines beyond the blank one", () => {
+    const { diff } = genDiff("\nbeta", "\nBETA", 1);
+    const rows = diff.split("\n");
+    expect(rows[0]!.trim()).not.toBe("...");
+    expect(rows[0]).toMatch(blankRow);
+  });
+
+  it("adds no context rows when contextLines is 0", () => {
+    const { diff } = genDiff("a\n\nc", "a\n\nC", 0);
+    const contextRows = diff.split("\n").filter((r) => /^ [A-Za-z0-9]{3}│/.test(r));
+    expect(contextRows).toHaveLength(0);
+  });
+
+  it("extends the head group toward a blank line between two changes", () => {
+    const { diff } = genDiff(
+      "a\nb\n\nx\ny\nz\nc\nd\ne",
+      "A\nb\n\nx\ny\nz\nc\nD\ne",
+      2,
+    );
+    const rows = diff.split("\n");
+    expect(diff).toMatch(row("x"));
+    expect(diff).toMatch(row("b"));
+    expect(diff).toMatch(row("z"));
+    expect(diff).not.toMatch(row("y"));
+    const markerIdx = rows.findIndex((l) => l.trim() === "...");
+    expect(markerIdx).toBeGreaterThan(rows.findIndex((l) => row("x").test(l)));
+    expect(markerIdx).toBeLessThan(rows.findIndex((l) => row("z").test(l)));
+  });
+
+  it("shows the whole middle block when blank extensions would overlap", () => {
+    const { diff } = genDiff(
+      "a\n\n\n\n\n\nc\nd\ne",
+      "A\n\n\n\n\n\nc\nD\ne",
+      2,
+    );
+    const rows = diff.split("\n");
+    const contextRows = rows.filter((l) => /^ [A-Za-z0-9]{3}│/.test(l));
+    expect(contextRows).toHaveLength(7);
+    expect(diff).toMatch(row("c"));
+    expect(diff).toMatch(row("e"));
+    expect(rows.filter((l) => l.trim() === "...")).toHaveLength(0);
+  });
+});
+
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
