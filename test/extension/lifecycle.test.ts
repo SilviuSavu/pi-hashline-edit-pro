@@ -29,10 +29,10 @@ async function registerExtension(pi: any) {
 }
 
 describe("session_start lifecycle", () => {
-  it("removes the built-in edit tool from active tools", async () => {
+  it("removes the built-in edit and grep tools from active tools", async () => {
     await withTempDir("lifecycle-tools-", async (dir) => {
       const { pi, handlers } = makeLifecyclePi();
-      pi.setActiveTools(["read", "replace", "edit", "bash"]);
+      pi.setActiveTools(["read", "replace", "edit", "grep", "bash"]);
       await registerExtension(pi);
       const sessionStart = handlers.get("session_start");
       expect(sessionStart).toBeDefined();

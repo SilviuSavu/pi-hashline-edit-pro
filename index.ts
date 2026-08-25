@@ -2,6 +2,8 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { DEFAULT_MAX_BYTES } from "@earendil-works/pi-coding-agent";
 import { initHasher } from "./src/hashline";
 import { regReplace } from "./src/replace";
+import { regInsert } from "./src/insert";
+import { regGrep } from "./src/grep";
 import { regReplaceUndo, clearUndo } from "./src/replace-undo";
 import { regRead, fmtReadPreview } from "./src/read";
 import type { RMetrics } from "./src/replace-response";
@@ -25,13 +27,15 @@ export default function (pi: ExtensionAPI): void {
   regRead(pi);
 
   regReplace(pi);
+  regInsert(pi);
+  regGrep(pi);
   regReplaceUndo(pi);
 
   let autoRead = true;
 
   pi.on("session_start", async (_event, ctx) => {
     const active = pi.getActiveTools();
-    pi.setActiveTools(active.filter((t) => t !== "edit"));
+    pi.setActiveTools(active.filter((t) => t !== "edit" && t !== "grep"));
     await initHasher();
     try {
       const store = await loadHashStore();
@@ -48,7 +52,7 @@ export default function (pi: ExtensionAPI): void {
   });
 
   pi.registerCommand("toggle-auto-read", {
-    description: "Toggle auto-read anchors after write and post-edit diffs after replace and undo_last_replace",
+    description: "Toggle auto-read anchors after write and post-edit diffs after replace, insert, and undo_last_replace",
     handler: async (_args, ctx) => {
       autoRead = await toggleAutoRead();
       const state = autoRead ? "enabled" : "disabled";
@@ -111,6 +115,7 @@ export default function (pi: ExtensionAPI): void {
 
     if (
       event.toolName !== "replace" &&
+      event.toolName !== "insert" &&
       event.toolName !== "undo_last_replace"
     ) return;
     if (!autoRead) return;

@@ -27,6 +27,8 @@ export {
 	type BDup,
 	type AutoFix,
 	resEdit,
+	stripAnchorRow,
+	resolveAnchorLine,
 	valEdit,
 	stripBarePrefixes,
 	stripDiffPrefixes,

@@ -164,26 +164,29 @@ function assertItem(edit: Record<string, unknown>): void {
 
 export const ANCHOR_ROW_RE = new RegExp(`^([+-]?)(${HASH_RUN})│`);
 
+export function stripAnchorRow(
+	trimmed: string,
+	entryLabel: string,
+	warnings?: string[],
+): string {
+	const match = trimmed.match(ANCHOR_ROW_RE);
+	if (!match) return trimmed;
+	const marker =
+		match[1] === "+"
+			? "diff-preview marker"
+			: match[1] === "-"
+				? 'leading "-" marker'
+				: '"HASH│" prefix';
+	warnings?.push(`[E_BAD_REF] Stripped ${marker} from ${entryLabel} "${trimmed}".`);
+	return match[2]!;
+}
+
 export function resEdit(edit: HTEdit, warnings?: string[]): HEdit {
   assertItem(edit as Record<string, unknown>);
 
   const replaceLines = parseText(edit.replacement_lines, warnings);
   const bounds = [edit.remove_from, edit.remove_to].map((ref) => {
-    const trimmed = ref.trim();
-    const match = trimmed.match(ANCHOR_ROW_RE);
-    if (match) {
-      let message: string;
-      if (match[1] === "+") {
-        message = `[E_BAD_REF] Stripped diff-preview marker from remove_from/remove_to entry "${trimmed}".`;
-      } else if (match[1] === "-") {
-        message = `[E_BAD_REF] Stripped leading "-" marker from remove_from/remove_to entry "${trimmed}".`;
-      } else {
-        message = `[E_BAD_REF] Stripped "HASH│" prefix from remove_from/remove_to entry "${trimmed}".`;
-      }
-      warnings?.push(message);
-      return match[2]!;
-    }
-    return ref;
+    return stripAnchorRow(ref.trim(), "remove_from/remove_to entry", warnings);
   }) as [string, string];
   return {
     content_lines: replaceLines,
@@ -471,6 +474,31 @@ export function valEdit(
 		mismatches,
 		boundaryDups,
 	};
+}
+
+export function resolveAnchorLine(
+	ref: Anchor,
+	fileLines: string[],
+	fileHashes: string[],
+	filePath?: string,
+): number {
+	const { resolved, mismatches } = valEdit(
+		{ hash_bounds: [ref, ref], content_lines: [] },
+		fileLines,
+		fileHashes,
+		[],
+		undefined,
+	);
+	if (mismatches.length > 0 || !resolved) {
+		const feedback = fmtMismatchWithHashes(
+			mismatches,
+			fileLines,
+			fileHashes,
+			filePath,
+		);
+		throw new AnchorMismatchError(feedback.text, feedback.hashes);
+	}
+	return resolved.hash_bounds[0].line;
 }
 
 export class RangeStaleError extends Error {

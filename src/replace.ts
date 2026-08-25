@@ -8,13 +8,12 @@ import { Type } from "typebox";
 import { constants } from "fs";
 import {
   genDiff,
-  restoreEndings,
   type LineEnding,
 } from "./replace-diff";
-import { readNormFile, safeSnapId } from "./file-reader";
+import { readNormFile, type NormFile } from "./file-reader";
 import { normReq } from "./replace-normalize";
 import { isRec, rejectUnknownFields, abortIf, makePrepareArguments } from "./utils";
-import { resolveTarget, writeAtomic } from "./fs-write";
+import { resolveTarget } from "./fs-write";
 import { applyEdit,
   lineHashes,
   resEdit,
@@ -26,12 +25,7 @@ import { applyEdit,
   type NEdit,
 } from "./hashline";
 import { toCwd } from "./paths";
-import {
-  buildChanged,
-  buildNoop,
-  type RMeta,
-  type RMetrics,
-} from "./replace-response";
+import type { RMetrics } from "./replace-response";
 import {
   buildAppliedText,
   mkMdTheme,
@@ -44,10 +38,10 @@ import {
   type RRState,
 } from "./replace-render";
 import { loadP, loadGuide } from "./prompts";
-import { saveUndo } from "./replace-undo";
 import { loadHashStore, findSnapshotPaths, type HashStore } from "./hash-store";
-import { getServed, recordServedSafe, recordServedDiffSafe } from "./served";
+import { getServed, recordServedSafe } from "./served";
 import { noopPayloadKey, markBoundaryNoop, consumeBoundaryBypass, clearBoundaryBypass } from "./boundary-bypass";
+import { commitEdit } from "./commit";
 
 const replacementLinesSchema = Type.Array(
   Type.String({
@@ -93,7 +87,7 @@ export type ReplaceDetails = {
   metrics?: RMetrics;
 };
 
-interface PipelineResult {
+export interface PipelineResult {
   path: string;
   originalNormalized: string;
   result: string;
@@ -183,6 +177,7 @@ export interface ExecPipelineOptions {
   store?: HashStore;
   noPersist?: boolean;
   skipBoundaryDedup?: boolean;
+  preloadedNorm?: NormFile;
 }
 
 function collectRemovedHashes(
@@ -243,7 +238,7 @@ export async function execPipeline(
 
   const hashStore = options?.store ?? await loadHashStore();
   const { normalized: originalNormalized, bom, originalEnding, fileHashes: originalHashes, hadUtf8DecodeErrors, absolutePath } = await readNormFile(
-    path, cwd, { signal: options?.signal, accessMode: options?.accessMode, maxLines: MAX_HASH_LINES, store: hashStore, noPersist: options?.noPersist },
+    path, cwd, { signal: options?.signal, accessMode: options?.accessMode, maxLines: MAX_HASH_LINES, store: hashStore, noPersist: options?.noPersist, preloadedNorm: options?.preloadedNorm },
   );
 
   const served = await getServed(hashStore, absolutePath);
@@ -488,113 +483,24 @@ export function buildToolDef(): ToolDef {
       const boundaryBypass = consumeBoundaryBypass(mutationTargetPath, noopPayload);
       return withFileMutationQueue(mutationTargetPath, async () => {
         abortIf(signal);
-
-        const {
-          originalNormalized,
-          originalHashes,
-          result,
-          bom,
-          originalEnding,
-          hadUtf8DecodeErrors,
-          warnings,
-          noopEdit,
-          firstChangedLine,
-          lastChangedLine,
-          resultHashes,
-          hadBoundaryDedup,
-          boundaryRemovedLines,
-          totalAddedLines,
-          totalRemovedLines,
-        } = await execPipeline(
+        const pipe = await execPipeline(
           normalizedParams,
           ctx.cwd,
           { accessMode: constants.R_OK | constants.W_OK, signal, skipBoundaryDedup: boundaryBypass },
         );
-
-        if (resolution) {
-          warnings.unshift(resolution.warning);
-        }
-        if (boundaryBypass && originalNormalized !== result) {
-          warnings.push("[E_BOUNDARY_BYPASS] Boundary dedup was off for this call and is back on.");
-        }
-
-        const editsAttempted = 1;
-        if (originalNormalized === result) {
-          const noopSnapshotId = await safeSnapId(absolutePath, "noop edit");
-          if (hadBoundaryDedup) {
-            markBoundaryNoop(mutationTargetPath, noopPayload);
-          }
-          return buildNoop({
-            path,
-            noopEdit,
-            snapshotId: noopSnapshotId,
-            editMeta: {
-              editsAttempted,
-              noopEditsCount: noopEdit ? 1 : 0,
-              addedLines: 0,
-              removedLines: 0,
-            },
-            warnings,
-            boundaryRemovedLines,
-          });
-        }
-
-        if (hadUtf8DecodeErrors) {
-          warnings.push(
-            "Non-UTF-8 bytes were shown as U+FFFD; this edit rewrote the file as UTF-8.",
-          );
-        }
-
-        abortIf(signal);
-        const undo = await saveUndo(mutationTargetPath, {
-          content: originalNormalized,
-          bom,
-          originalEnding,
-          hashes: originalHashes,
-          resultContent: result,
-        });
-        if (!undo.persisted) {
-          throw new Error(
-            `[E_UNDO_UNAVAILABLE] Could not persist undo history; the edit was not applied and ${path} is unchanged.`
-          );
-        }
-        try {
-          abortIf(signal);
-          await writeAtomic(
-            absolutePath,
-            bom + restoreEndings(result, originalEnding),
-          );
-        } catch (error) {
-          await undo.restore();
-          throw error;
-        }
-        clearBoundaryBypass(mutationTargetPath);
-        const updatedSnapshotId = await safeSnapId(absolutePath, "post-edit");
-
-        const editMeta: RMeta = {
-          editsAttempted,
-          noopEditsCount: noopEdit ? 1 : 0,
-          firstChangedLine,
-          lastChangedLine,
-          addedLines: totalAddedLines,
-          removedLines: totalRemovedLines,
-        };
-
-        const successInput = {
+        const appliedWarnings = boundaryBypass
+          ? ["[E_BOUNDARY_BYPASS] Boundary dedup was off for this call and is back on."]
+          : [];
+        return commitEdit(pipe, {
           path,
-          originalNormalized,
-          originalHashes,
-          result,
-          resultHashes,
-          warnings,
-          snapshotId: updatedSnapshotId,
-          editMeta,
-        };
-        const changed = buildChanged(successInput);
-        if (changed.details.diff) {
-          await recordServedDiffSafe(mutationTargetPath, changed.details.diff, "post-edit diff", new Set(resultHashes));
-        }
-        return changed;
+          absolutePath,
+          mutationTargetPath,
+          signal,
+          prefixWarnings: resolution ? [resolution.warning] : [],
+          appliedWarnings,
+          onApplied: () => clearBoundaryBypass(mutationTargetPath),
+          onNoopDedup: () => markBoundaryNoop(mutationTargetPath, noopPayload),
+        });
       });
     },
   };

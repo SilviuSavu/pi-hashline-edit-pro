@@ -61,6 +61,7 @@ export interface ReadNormOptions {
   signal?: AbortSignal;
   accessMode?: number;
   preloadedFile?: LFile;
+  preloadedNorm?: NormFile;
   maxLines?: number;
   store?: HashStore;
   noPersist?: boolean;
@@ -80,6 +81,9 @@ export async function readNormFile(
   await valAccess(resolvedPath, path, accessMode);
 
   abortIf(signal);
+  const preloadedNorm = options?.preloadedNorm;
+  if (preloadedNorm) return preloadedNorm;
+
   const file = options?.preloadedFile ?? (await loadFileKindAndText(resolvedPath, { maxLines: options?.maxLines, displayPath: path }));
   valKind(file, path);
   abortIf(signal);

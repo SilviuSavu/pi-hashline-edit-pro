@@ -10,9 +10,11 @@ Fork of [pi-hashline-edit](https://github.com/RimuruW/pi-hashline-edit) by Rimur
 
 - `read` returns every line as `HASH│content`. The hash is the line's address.
 - `replace` targets a range of hashes, so edits land on the lines you meant.
+- `insert` adds lines after or before a line by hash: the anchor line is preserved and the new lines are applied literally, never deduplicated.
+- `grep` returns matching lines (and requested context) with `HASH│content` rows that are served like read output, so search results are immediately editable.
 - Editing one part of a file leaves the hashes of the rest unchanged, so anchors from an earlier read stay valid across edits.
-- After a `write` you get the new anchors. After a `replace` you get the diff with the new hashes.
-- The most recent replace on a file can be reverted, even after a restart.
+- After a `write` you get the new anchors. After a `replace` or `insert` you get the diff with the new hashes.
+- The most recent replace or insert on a file can be reverted, even after a restart.
 - Permissions, line endings, BOMs, symlinks, and hard links survive every edit.
 
 ## Quick start
@@ -74,7 +76,7 @@ Edge cases:
 
 ## The replace tool
 
-The built-in `edit` tool is disabled. `replace` is the only edit path, and it takes the hash anchors from `read` output.
+The built-in `edit` tool is disabled. `replace` and `insert` are the only edit paths, and both take the hash anchors from `read` output.
 
 One edit per call, with `remove_from`, `remove_to`, and `replacement_lines` at the top level:
 
@@ -100,17 +102,64 @@ Notes:
 - An edit that produces identical content reports `No changes made` and leaves the anchors alone. When such a noop happened because a boundary anti-duplication cut removed lines from the replacement (the cut blocked a line that duplicates the block next to the range from being added), the same replacement sent once more runs with the edge anti-duplication turned off for that single call and is applied literally. The duplicated lines are kept, and the result carries a `[E_BOUNDARY_BYPASS]` notice. The pending bypass is per file and keyed to that payload; copied `HASH│` prefixes, diff markers, and stray whitespace in the resend are normalized before matching, so a copy-paste resend still hits it. Any applied edit clears it, and a successful `write` also clears it.
 - Every line in the removed range must match what was last shown to you. The extension records the `HASH│content` rows it serves (`read` output, the auto-read block after `write`, the `+HASH│`/` HASH│` rows of post-edit diffs (replace and undo), the current-range rows of `[E_RANGE_STALE]` feedback, and the context rows of stale/ambiguous-anchor feedback) and verifies the whole range against that record before writing. If an interior line changed on disk since it was shown (external editor, formatter-on-save, code generation) or was never shown, the edit is refused with `[E_RANGE_STALE]` and the current range is returned with fresh anchors, so the retry needs no `read`. Edits outside the served record are only possible for files that were never read (for example right after a `write` with auto-read disabled); once the file has been served, every replaced line must have been shown.
 - After a successful edit you get the post-edit diff with fresh anchors, so you can keep editing without re-reading.
-- Do not issue multiple replace calls on the same file in one message; parallel edits split attention across the post-edit diffs and removed lines are easy to miss. Verify each diff before the next edit on that file.
+- Do not issue multiple replace or insert calls on the same file in one message; parallel edits split attention across the post-edit diffs and removed lines are easy to miss. Verify each diff before the next edit on that file.
+
+## The insert tool
+
+`insert` adds lines after or before an existing line without removing anything. The anchor line is preserved, and the new lines go after it (`direction: "after"`) or before it (`direction: "before"`):
+
+```json
+{
+  "path": "src/main.ts",
+  "anchor": "szJ",
+  "direction": "after",
+  "lines": ["  console.log('hi');"]
+}
+```
+
+| Field | Description |
+| --- | --- |
+| `anchor` | 3-char hash from `read` output marking the line next to which the lines go (inclusive; the line is preserved). A pasted diff row like `+aB3│x` or a `HASH│` prefix is stripped automatically with a warning. |
+| `direction` | `"after"` to insert below the anchor line, `"before"` to insert above it. |
+| `lines` | Lines to insert as an array of strings, one element per line. Mirror `replacement_lines` semantics: use `[""]` for a blank line and do not embed `\n` inside an element. The anchor line is never part of `lines`. |
+
+Notes:
+
+- The anchor line must have been shown to you (read output, a post-edit diff row, grep output, or stale-range feedback). The same verification as `replace` applies: a stale or unshown anchor is rejected with `[E_STALE_ANCHOR]`, `[E_AMBIGUOUS_ANCHOR]`, or `[E_RANGE_STALE]` and the retry needs no `read`.
+- Lines are applied literally: nothing is removed, and a line that duplicates its neighbor is kept. `replace`'s boundary anti-duplication never runs for `insert`.
+- To seed an empty file, read it and insert after the `HASH│` empty-line row.
+- The same safety machinery as `replace` applies: undo is saved before the write (a failed write restores the previous undo record), line endings and BOMs survive, and an applied insert clears a pending boundary bypass.
+- Inserting nothing (`lines: []`) reports a noop and leaves the file unchanged; inserted lines are never deduplicated.
+
+## The grep tool
+
+`grep` replaces the built-in grep with a hash-anchored search. Every matching line (and each requested context line) is returned as a `HASH│content` row, and those rows are recorded in the served state exactly like `read` output, so you can target them with `replace` or `insert` immediately without a separate `read`.
+
+| Field | Description |
+| --- | --- |
+| `pattern` | Search pattern (regex, or literal text when `literal` is true). |
+| `path` | File or directory to search (default: the current working directory). |
+| `glob` | Filter files by glob pattern; `*` matches across directories, e.g. `*.ts` or `**/*.spec.ts`. |
+| `ignoreCase` | Case-insensitive search (default: false). |
+| `literal` | Treat the pattern as literal text instead of a regex (default: false). |
+| `context` | Lines of context before and after each match; context rows carry anchors too (default: 0). |
+| `limit` | Maximum number of matched lines to return (default: 100). |
+
+Notes:
+- Results are grouped per file under a `=== path ===` header; every shown row carries the anchor it would have in `read` output.
+- Directory searches skip `node_modules`, `.git`, `.tmp`, and `coverage`. Binary, image, and oversized files are skipped silently.
+- Output is capped at `limit` matched lines and 2000 rows, with a hint when the cap cut results.
+- `file_path` works as an alias for `path`.
 - Line endings and BOMs survive every edit. The file's line ending is detected from its first newline and restored on write; a file that mixes LF and CRLF (for example a WSL-edited file) is normalized to the first-seen ending.
 - Files with multiple hard links (`nlink > 1`) are rewritten in place rather than via a temp-file rename, so every link keeps seeing the same content; that write is direct rather than atomic.
 
 ## Undo
 
-`undo_last_replace` reverts the most recent successful `replace` on a file, restoring the exact previous content, BOM and line endings included, plus the previous anchors.
+`undo_last_replace` reverts the most recent successful `replace` or `insert` on a file, restoring the exact previous content, BOM and line endings included, plus the previous anchors.
 
-- History is per-file and single-level: only the most recent replace can be reverted.
+- History is per-file and single-level: only the most recent replace or insert can be reverted.
 - History is persisted and survives session restarts. A failed `write` does not clear it.
-- Every applied replace is undoable: the undo record is saved before the edit is written.
+- Every applied replace or insert is undoable: the undo record is saved before the edit is written.
 - A successful `write` clears the history for that file.
 - If the file was modified or deleted since the last replace, the undo is refused rather than overwriting those changes.
 
@@ -118,23 +167,24 @@ Notes:
 
 Enabled by default. After a successful `write` that changes the file, the extension reads the file and appends an `--- Auto-read (hashline anchors) ---` block to the result, so you get fresh `HASH│content` anchors without a separate `read` call.
 
-- After `replace` and `undo_last_replace`, the result shows the post-edit diff. The `+HASH│` and ` HASH│` rows carry the current hashes, so follow-up edits can anchor on the diff directly. The `-HASH│` rows show removed lines with their old hashes, so you can see exactly which anchors were deleted (those hashes are stale after the edit). When the context line touching a change is blank or whitespace-only, one more context line is shown in that direction, so the change stays anchored to visible content. Call `read` when you want the full file's anchors.
+- After `replace`, `insert`, and `undo_last_replace`, the result shows the post-edit diff. The `+HASH│` and ` HASH│` rows carry the current hashes, so follow-up edits can anchor on the diff directly. The `-HASH│` rows show removed lines with their old hashes, so you can see exactly which anchors were deleted (those hashes are stale after the edit). When the context line touching a change is blank or whitespace-only, one more context line is shown in that direction, so the change stays anchored to visible content. Call `read` when you want the full file's anchors.
 - Auto-read keeps a 50KB display budget. Lines over 50KB are skipped with a marker instead of their content (use `read` for lines up to 200KB).
 - Toggle at runtime with `/toggle-auto-read`; the setting persists across sessions.
 
 ## Tool result details
 
-All three tools return machine-readable metadata in `details` alongside the model-visible text:
+All five tools return machine-readable metadata in `details` alongside the model-visible text:
 
 - `read`: `details.truncation` (set when the output was truncated), `details.snapshotId` (a `v2|path|ino|mtime|ctime|size` fingerprint of the file), `details.nextOffset` (use as the next `offset`), and `details.metrics` with `truncated` and `next_offset`.
-- `replace`: `details.diff` (the post-edit diff; `+HASH│` and ` HASH│` rows carry the current anchors), `details.patch` (a standard unified patch of the changes, for external tools), `details.firstChangedLine`, `details.snapshotId`, `details.classification` (`"noop"` when nothing changed), and `details.metrics`: `edits_attempted`, `edits_noop`, `warnings`, `classification` (`"applied"` or `"noop"`), `changed_lines` (`{ first, last }`), `added_lines`, `removed_lines`.
+- `replace` and `insert`: `details.diff` (the post-edit diff; `+HASH│` and ` HASH│` rows carry the current anchors), `details.patch` (a standard unified patch of the changes, for external tools), `details.firstChangedLine`, `details.snapshotId`, `details.classification` (`"noop"` when nothing changed), and `details.metrics`: `edits_attempted`, `edits_noop`, `warnings`, `classification` (`"applied"` or `"noop"`), `changed_lines` (`{ first, last }`), `added_lines`, `removed_lines`.
 - `undo_last_replace`: `details.diff` (the undo diff with the restored anchors), `details.patch` (a standard unified patch of the restored changes), and `details.metrics` (same shape as `replace`).
+- `grep`: `details.metrics` with `matches`, `files`, and `truncated`.
 
 ## Settings
 
 | Command | Description |
 | --- | --- |
-| `/toggle-auto-read` | Toggle auto-read anchors after write and post-edit diffs after replace and undo_last_replace. Persists across sessions. |
+| `/toggle-auto-read` | Toggle auto-read anchors after write and post-edit diffs after replace, insert, and undo_last_replace. Persists across sessions. |
 
 Settings live in `~/.config/pi-hashline-edit-pro/config.json`, created automatically when a setting is toggled. On non-Windows platforms, the config directory honors `XDG_CONFIG_HOME` when set (falling back to `~/.config`); on Windows it always uses `~/.config`:
 

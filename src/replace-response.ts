@@ -2,7 +2,7 @@ import type { ReplaceDetails } from "./replace";
 import { genDiff, genPatch } from "./replace-diff";
 import { visLines, clipLine } from "./utils";
 
-type TResult = {
+export type TResult = {
 	content: Array<{ type: "text"; text: string }>;
 	isError?: boolean;
 	details: ReplaceDetails;
@@ -89,7 +89,7 @@ function warnBlock(warnings: string[] | undefined): string {
 	return warnings?.length ? `\n\nWarnings:\n${warnings.join("\n")}` : "";
 }
 
-export function buildNoop(input: NoopInput): TResult {
+export function buildNoop(input: NoopInput, noopNoun = "Replacement"): TResult {
 	const {
 		path,
 		noopEdit,
@@ -100,7 +100,7 @@ export function buildNoop(input: NoopInput): TResult {
 	} = input;
 
 	const noopDetailsText = noopEdit
-		? `Replacement for ${noopEdit.loc} is identical to current content:\n  ${noopEdit.loc}: ${clipLine(noopEdit.currentContent)}`
+		? `${noopNoun} for ${noopEdit.loc} is identical to current content:\n  ${noopEdit.loc}: ${clipLine(noopEdit.currentContent)}`
 		: "The edit produced identical content.";
 	const dedupNote =
 		boundaryRemovedLines !== undefined && boundaryRemovedLines > 0
@@ -129,14 +129,14 @@ export function buildNoop(input: NoopInput): TResult {
 	};
 }
 
-export function buildChanged(input: SuccessInput): TResult {
+export function buildChanged(input: SuccessInput, verb = "replaced"): TResult {
   const { path, result, warnings, snapshotId, originalNormalized, originalHashes, editMeta, resultHashes } = input;
   const resultLines = visLines(result);
   const diffResult = genDiff(originalNormalized, result, 1, resultHashes, originalHashes);
   const addedLines = editMeta.addedLines;
   const removedLines = editMeta.removedLines;
   const warningsBlock = warnBlock(warnings);
-  const successPrefix = `Successfully replaced in ${path}.`;
+  const successPrefix = `Successfully ${verb} in ${path}.`;
   const lineSummary = addedLines > 0 || removedLines > 0
     ? ` Added ${addedLines} line(s), removed ${removedLines} line(s).`
     : "";

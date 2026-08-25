@@ -1,0 +1,1 @@
+Search text files for a pattern. Returns every matching line (and the requested context lines) as `HASH│content` rows, so the results can be used directly as replace and insert anchors without a separate read. Directory searches skip node_modules, .git, .tmp, and coverage. Binary, image, and oversized files are skipped silently.

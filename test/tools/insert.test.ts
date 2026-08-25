@@ -1,0 +1,320 @@
+import { describe, expect, it } from "vitest";
+import { readFile } from "fs/promises";
+import { lineHashes } from "../../src/hashline";
+import { withTempFile, makeFakePiRegistry, setupIntegrationTest, getText, extractHash } from "../support/fixtures";
+import register from "../../index";
+
+describe("insert tool", () => {
+  it("registers a tool named insert", () => {
+    const { pi, getTool } = makeFakePiRegistry();
+    register(pi);
+    const tool = getTool("insert");
+    expect(tool).toBeDefined();
+    expect(tool.name).toBe("insert");
+  });
+
+  it("declares path, anchor, direction, and lines in the schema", () => {
+    const { pi, getTool } = makeFakePiRegistry();
+    register(pi);
+    const schema = getTool("insert").parameters as any;
+    expect(schema.type).toBe("object");
+    expect(schema.properties.path).toBeDefined();
+    expect(schema.properties.anchor).toBeDefined();
+    expect(schema.properties.direction).toBeDefined();
+    expect(schema.properties.lines).toBeDefined();
+    expect(schema.properties.replacement_lines).toBeUndefined();
+    expect(schema.additionalProperties).toBe(false);
+  });
+
+  it("inserts lines after the anchor line", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\ngamma\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const betaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│beta"))!);
+
+      const result = await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: betaHash, direction: "after", lines: ["beta1", "beta2"] },
+        undefined, undefined, ctx,
+      );
+      expect(result.content[0].text).toContain("Successfully inserted in sample.ts");
+      expect(result.content[0].text).toContain("Added 2 line(s), removed 1 line(s).");
+      expect(await readFile(path, "utf-8")).toBe("alpha\nbeta\nbeta1\nbeta2\ngamma\n");
+    });
+  });
+
+  it("inserts lines before the anchor line", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\ngamma\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const betaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│beta"))!);
+
+      await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: betaHash, direction: "before", lines: ["zero"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("alpha\nzero\nbeta\ngamma\n");
+    });
+  });
+
+  it("inserts before the first line", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const alphaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│alpha"))!);
+
+      await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: alphaHash, direction: "before", lines: ["head"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("head\nalpha\nbeta\n");
+    });
+  });
+
+  it("appends at EOF without adding a trailing newline", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const betaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│beta"))!);
+
+      await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: betaHash, direction: "after", lines: ["gamma"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("alpha\nbeta\ngamma");
+    });
+  });
+
+  it("seeds an empty file without a leading blank line", async () => {
+    await withTempFile("empty.ts", "", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "empty.ts" }, undefined, undefined, ctx);
+      const emptyHash = getText(readResult).split("\n")[0]!.split("│")[0]!;
+      expect(emptyHash).toMatch(/^[A-Za-z0-9]{3}$/);
+
+      await insertTool.execute(
+        "i1",
+        { path: "empty.ts", anchor: emptyHash, direction: "after", lines: ["first", "second"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("first\nsecond");
+    });
+  });
+
+  it("applies inserted lines that duplicate a neighbor literally", async () => {
+    await withTempFile("sample.ts", "a\nb\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const aHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│a"))!);
+
+      const result = await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: aHash, direction: "after", lines: ["b"] },
+        undefined, undefined, ctx,
+      );
+      expect(result.content[0].text).toContain("Successfully inserted");
+      expect(await readFile(path, "utf-8")).toBe("a\nb\nb\n");
+    });
+  });
+
+  it("reports a noop when inserting nothing", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const alphaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│alpha"))!);
+
+      const result = await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: alphaHash, direction: "after", lines: [] },
+        undefined, undefined, ctx,
+      );
+      expect(result.details.classification).toBe("noop");
+      expect(await readFile(path, "utf-8")).toBe("alpha\nbeta\n");
+    });
+  });
+
+  it("rejects a stale anchor", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\n", async ({ cwd }) => {
+      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      await expect(
+        insertTool.execute(
+          "i1",
+          { path: "sample.ts", anchor: "ZZZ", direction: "after", lines: ["x"] },
+          undefined, undefined, ctx,
+        ),
+      ).rejects.toThrow(/E_STALE_ANCHOR/);
+    });
+  });
+
+  it("rejects an anchor that was never served", async () => {
+    await withTempFile("sample.ts", "a\nb\nc\nd\n", async ({ cwd }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      await readTool.execute("r1", { path: "sample.ts", limit: 2 }, undefined, undefined, ctx);
+      const hashes = await lineHashes("a\nb\nc\nd\n", `${cwd}/sample.ts`);
+
+      await expect(
+        insertTool.execute(
+          "i",
+          { path: "sample.ts", anchor: hashes[2]!, direction: "after", lines: ["x"] },
+          undefined, undefined, ctx,
+        ),
+      ).rejects.toThrow(/E_RANGE_STALE/);
+    });
+  });
+
+  it("rejects an invalid direction", async () => {
+    await withTempFile("sample.ts", "alpha\n", async ({ cwd }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const alphaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│alpha"))!);
+
+      await expect(
+        insertTool.execute(
+          "i1",
+          { path: "sample.ts", anchor: alphaHash, direction: "sideways", lines: ["x"] },
+          undefined, undefined, ctx,
+        ),
+      ).rejects.toThrow(/E_BAD_SHAPE/);
+    });
+  });
+
+  it("rejects a missing lines array", async () => {
+    await withTempFile("sample.ts", "alpha\n", async ({ cwd }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const alphaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│alpha"))!);
+
+      await expect(
+        insertTool.execute(
+          "i1",
+          { path: "sample.ts", anchor: alphaHash, direction: "after" } as any,
+          undefined, undefined, ctx,
+        ),
+      ).rejects.toThrow(/E_BAD_SHAPE/);
+    });
+  });
+
+  it("preserves CRLF line endings", async () => {
+    await withTempFile("crlf.ts", "alpha\r\nbeta\r\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "crlf.ts" }, undefined, undefined, ctx);
+      const alphaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│alpha"))!);
+
+      await insertTool.execute(
+        "i1",
+        { path: "crlf.ts", anchor: alphaHash, direction: "after", lines: ["mid"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("alpha\r\nmid\r\nbeta\r\n");
+    });
+  });
+
+  it("supports the file_path alias", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const alphaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│alpha"))!);
+
+      await insertTool.execute(
+        "i1",
+        { file_path: "sample.ts", anchor: alphaHash, direction: "after", lines: ["mid"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("alpha\nmid\nbeta\n");
+    });
+  });
+
+  it("keeps untouched-line anchors valid after an insert", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\ngamma\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const lines = getText(readResult).split("\n");
+      const alphaHash = extractHash(lines.find((l) => l.includes("│alpha"))!);
+      const gammaHash = extractHash(lines.find((l) => l.includes("│gamma"))!);
+
+      await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: alphaHash, direction: "after", lines: ["mid"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("alpha\nmid\nbeta\ngamma\n");
+
+      const editTool = getTool("replace");
+      await editTool.execute(
+        "e1",
+        { path: "sample.ts", remove_from: gammaHash, remove_to: gammaHash, replacement_lines: ["GAMMA"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("alpha\nmid\nbeta\nGAMMA\n");
+    });
+  });
+
+  it("undoes an insert with undo_last_replace", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\ngamma\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const undo = getTool("undo_last_replace");
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const betaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│beta"))!);
+
+      await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: betaHash, direction: "after", lines: ["B1", "B2"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("alpha\nbeta\nB1\nB2\ngamma\n");
+
+      const undone = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, ctx);
+      expect(undone.isError).toBeFalsy();
+      expect(await readFile(path, "utf-8")).toBe("alpha\nbeta\ngamma\n");
+    });
+  });
+
+  it("an applied insert clears a pending boundary bypass", async () => {
+    await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd, path }) => {
+      const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
+      const insertTool = getTool("insert");
+      const editTool = getTool("replace");
+      const hashes = await lineHashes("aaa\nbbb\nccc\n", `${cwd}/sample.ts`);
+      await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const payload = {
+        path: "sample.ts",
+        remove_from: hashes[1]!,
+        remove_to: hashes[1]!,
+        replacement_lines: ["bbb", "ccc"],
+      };
+
+      const first = await editTool.execute("e1", payload, undefined, undefined, ctx);
+      expect(first.details.classification).toBe("noop");
+
+      await insertTool.execute(
+        "i1",
+        { path: "sample.ts", anchor: hashes[0]!, direction: "after", lines: ["AAA2"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(path, "utf-8")).toBe("aaa\nAAA2\nbbb\nccc\n");
+
+      const resend = await editTool.execute("e2", payload, undefined, undefined, ctx);
+      expect(resend.details.classification).toBe("noop");
+      expect(getText(resend)).not.toContain("[E_BOUNDARY_BYPASS]");
+      expect(await readFile(path, "utf-8")).toBe("aaa\nAAA2\nbbb\nccc\n");
+    });
+  });
+});
