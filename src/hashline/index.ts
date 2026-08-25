@@ -43,5 +43,6 @@ export {
 	buildIdx,
 	applyEdit,
 	fmtRegion,
+	fmtRow,
 	changedRange,
 } from "./apply";

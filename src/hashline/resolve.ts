@@ -74,6 +74,19 @@ function assertAligned(
 	}
 }
 
+export function fmtRow(hash: string, line: string): string {
+	return `${hash}${HASH_SEP}${line}`;
+}
+
+export function fmtRegion(hashes: string[], lines: string[]): string {
+	if (hashes.length !== lines.length) {
+		throw new Error(
+			`fmtRegion: hashes.length (${hashes.length}) must match lines.length (${lines.length}).`,
+		);
+	}
+	return lines.map((line, index) => fmtRow(hashes[index]!, line)).join("\n");
+}
+
 export function fmtMismatchWithHashes(
   mismatches: HMismatch[],
   fileLines: string[],
@@ -502,12 +515,10 @@ export function resolveAnchorLine(
 }
 
 export class RangeStaleError extends Error {
-  readonly firstMismatchLine: number;
   readonly rangeHashes: string[];
-  constructor(message: string, firstMismatchLine: number, rangeHashes: string[]) {
+  constructor(message: string, rangeHashes: string[]) {
     super(message);
     this.name = "RangeStaleError";
-    this.firstMismatchLine = firstMismatchLine;
     this.rangeHashes = rangeHashes;
   }
 }
@@ -544,7 +555,7 @@ export function assertRangeServed(
   for (let line = startLine; line < startLine + shownLength; line++) {
     const hash = fileHashes[line - 1]!;
     shownHashes.push(hash);
-    rows.push(`${hash}${HASH_SEP}${fileLines[line - 1]}`);
+    rows.push(fmtRow(hash, fileLines[line - 1]));
   }
   const location = filePath ? ` in ${filePath}` : "";
   const first = mismatchLines[0]!;
@@ -558,7 +569,7 @@ export function assertRangeServed(
       : "";
   const message =
     `[E_RANGE_STALE] ${mismatchText} what was shown. Nothing was modified. Current range with fresh anchors:\n\n${rows.join("\n")}${capHint}`;
-  throw new RangeStaleError(message, first, shownHashes);
+  throw new RangeStaleError(message, shownHashes);
 }
 
 export { warnUnicodeEsc };

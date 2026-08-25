@@ -1,10 +1,9 @@
 import { mkdtemp, mkdir, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { beforeAll, afterAll, vi } from "vitest";
-import { _lineHashesPure, initHasher } from "../../src/hashline";
+import { initHasher } from "../../src/hashline";
 import { Compile } from "typebox/compile";
 import register from "../../index";
-import { regReplace } from "../../src/replace";
 import { shutdownHashStore } from "../../src/hash-store";
 export async function getWritableTempRoot(): Promise<string> {
   const fallback = join(process.cwd(), ".tmp");
@@ -181,20 +180,6 @@ export function makeFakePiRegistry() {
       return tool;
     },
   };
-}
-
-export function makeFakeReplaceRegistry() {
-  const tools = new Map<string, any>();
-  const pi = {
-    registerTool(tool: any) {
-      tools.set(tool.name, tool);
-    },
-    on() {},
-  } as any;
-  regReplace(pi);
-  const tool = tools.get("replace");
-  if (!tool) throw new Error("Tool not registered: replace");
-  return { tool };
 }
 
 export function setupIntegrationTest(cwd: string) {

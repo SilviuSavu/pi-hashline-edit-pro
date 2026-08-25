@@ -118,6 +118,14 @@ export function parseHashList(raw: string, onInvalid: () => void): string[] | un
   return parsed;
 }
 
+export function parseStoredHashes(
+  row: Record<string, unknown> | undefined,
+  onInvalid: () => void,
+): string[] | undefined {
+  if (!row) return undefined;
+  return parseHashList(row.hashes as string, onInvalid);
+}
+
 function isValidSnapshot(value: unknown): value is LegacySnapshot {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
@@ -172,6 +180,14 @@ function withBusyRetry<T>(fn: () => T): T {
 
 function openDbWithBusyRetry(storePath: string): { db: RawDb; stmts: Prepared } {
   return withBusyRetry(() => openDb(storePath));
+}
+
+function retriedWrite(
+  stmt: { run(...params: SqlParams): unknown },
+): (...params: SqlParams) => void {
+  return (...params) => {
+    withBusyRetry(() => { stmt.run(...params); });
+  };
 }
 
 let cachedDb: { path: string; db: RawDb; stmts: Prepared } | null = null;
@@ -269,14 +285,14 @@ function buildStore(
     get: (...params) => getStmt.get(...params) as Record<string, unknown> | undefined,
     allPaths: (...params) => allStmt.all(...params) as Record<string, unknown>[],
     allHashes: (...params) => allHashesStmt.all(...params) as Record<string, unknown>[],
-    deleteOne: (...params) => { withBusyRetry(() => { delStmt.run(...params); }); },
-    upsert: (...params) => { withBusyRetry(() => { upsertStmt.run(...params); }); },
-    undoUpsert: (...params) => { withBusyRetry(() => { undoUpsertStmt.run(...params); }); },
+    deleteOne: retriedWrite(delStmt),
+    upsert: retriedWrite(upsertStmt),
+    undoUpsert: retriedWrite(undoUpsertStmt),
     undoGet: (...params) => undoGetStmt.get(...params) as Record<string, unknown> | undefined,
-    undoDelete: (...params) => { withBusyRetry(() => { undoDelStmt.run(...params); }); },
+    undoDelete: retriedWrite(undoDelStmt),
     servedGet: (...params) => servedGetStmt.get(...params) as Record<string, unknown> | undefined,
-    servedUpsert: (...params) => { withBusyRetry(() => { servedUpsertStmt.run(...params); }); },
-    servedDelete: (...params) => { withBusyRetry(() => { servedDelStmt.run(...params); }); },
+    servedUpsert: retriedWrite(servedUpsertStmt),
+    servedDelete: retriedWrite(servedDelStmt),
   };
   return { db, stmts };
 }
@@ -489,8 +505,7 @@ export function getSnapshot(
     return cached.hashes.slice();
   }
   const row = store.stmts.get(path, checksum, lineCount);
-  if (!row) return undefined;
-  const parsed = parseHashList(row.hashes as string, () => {
+  const parsed = parseStoredHashes(row, () => {
     if (deleteCorrupt) store.stmts.deleteOne(path);
     snapshotCache.delete(path);
   });
@@ -525,7 +540,7 @@ export function upsertUndo(store: HashStore, path: string, entry: UndoRecord): v
 export function getUndoEntry(store: HashStore, path: string): UndoRecord | undefined {
   const row = store.stmts.undoGet(path);
   if (!row) return undefined;
-  const parsed = parseHashList(row.hashes as string, () => store.stmts.undoDelete(path));
+  const parsed = parseStoredHashes(row, () => store.stmts.undoDelete(path));
   if (!parsed) return undefined;
   return {
     content: row.content as string,

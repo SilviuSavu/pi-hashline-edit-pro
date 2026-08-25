@@ -1,5 +1,5 @@
 import { abortIf, splitLines } from "../utils";
-import { _lineHashesPure, HASH_SEP } from "./hash";
+import { _lineHashesPure } from "./hash";
 import {
 	valEdit,
 	stripBarePrefixes,
@@ -268,20 +268,7 @@ export function applyEdit(
 	};
 }
 
-export function fmtRegion(
-	hashes: string[],
-	lines: string[],
-): string {
-	if (hashes.length !== lines.length) {
-		throw new Error(
-			`fmtRegion: hashes.length (${hashes.length}) must match lines.length (${lines.length}).`,
-		);
-	}
-	return lines
-		.map((line, index) => `${hashes[index]}${HASH_SEP}${line}`)
-		.join("\n");
-}
-
+export { fmtRegion, fmtRow } from "./resolve";
 export function changedRange(
 	original: string,
 	result: string,

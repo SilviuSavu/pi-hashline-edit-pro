@@ -4,7 +4,7 @@ import { readdir, stat } from "fs/promises";
 import { dirname, join, relative } from "path";
 import { loadFileKindAndText } from "./file-kind";
 import { readNormFile } from "./file-reader";
-import { MAX_HASH_LINES, HASH_SEP } from "./hashline";
+import { MAX_HASH_LINES, fmtRow } from "./hashline";
 import { toCwd } from "./paths";
 import { loadP, loadGuide } from "./prompts";
 import { normReq } from "./replace-normalize";
@@ -175,7 +175,7 @@ async function searchFile(
   const rows: string[] = [];
   const hashes: string[] = [];
   for (const idx of sorted) {
-    rows.push(`${norm.fileHashes[idx]}${HASH_SEP}${lines[idx]}`);
+    rows.push(fmtRow(norm.fileHashes[idx]!, lines[idx]!));
     hashes.push(norm.fileHashes[idx]!);
   }
   return {
