@@ -337,7 +337,7 @@ describe("served-state range verification", () => {
   it("re-edits with original anchors after an undo (undo diff rows are served)", async () => {
     await withTempFile("sample.ts", "a\nb\nc\nd\n", async ({ cwd, path }) => {
       const { ctx, readTool, editTool, getTool } = setupIntegrationTest(cwd);
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
       const lines = getText(readResult).split("\n");
       const bHash = extractHash(lines.find((l: string) => l.includes("│b"))!);
@@ -353,7 +353,7 @@ describe("served-state range verification", () => {
       expect(await readFile(path, "utf-8")).toBe("a\nB\nc\nd\n");
 
       const undone = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, ctx);
-      expect(undone.content[0].text).toContain("Undone last replace");
+      expect(undone.content[0].text).toContain("Undone last change");
       expect(await readFile(path, "utf-8")).toBe("a\nb\nc\nd\n");
 
       const retry = await editTool.execute(

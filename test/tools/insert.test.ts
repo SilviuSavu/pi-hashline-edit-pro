@@ -3,6 +3,8 @@ import { readFile } from "fs/promises";
 import { lineHashes } from "../../src/hashline";
 import { withTempFile, makeFakePiRegistry, setupIntegrationTest, getText, extractHash } from "../support/fixtures";
 import register from "../../index";
+import { insertPreview, buildInsertToolDef } from "../../src/insert";
+import type { RRState } from "../../src/replace-render";
 
 describe("insert tool", () => {
   it("registers a tool named insert", () => {
@@ -266,11 +268,11 @@ describe("insert tool", () => {
     });
   });
 
-  it("undoes an insert with undo_last_replace", async () => {
+  it("undoes an insert with undo_last_change", async () => {
     await withTempFile("sample.ts", "alpha\nbeta\ngamma\n", async ({ cwd, path }) => {
       const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
       const insertTool = getTool("insert");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
       const betaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│beta"))!);
 
@@ -315,6 +317,77 @@ describe("insert tool", () => {
       expect(resend.details.classification).toBe("noop");
       expect(getText(resend)).not.toContain("[E_BOUNDARY_BYPASS]");
       expect(await readFile(path, "utf-8")).toBe("aaa\nAAA2\nbbb\nccc\n");
+    });
+  });
+});
+
+describe("insert tool rendering", () => {
+  it("computes a diff preview for an insert request", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\ngamma\n", async ({ cwd }) => {
+      const { ctx, readTool } = setupIntegrationTest(cwd);
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const betaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│beta"))!);
+      const preview = await insertPreview({ path: "sample.ts", anchor: betaHash, direction: "after", lines: ["BETA1"] }, cwd);
+      expect(preview).toHaveProperty("diff");
+      expect((preview as { diff: string }).diff).toContain("BETA1");
+    });
+  });
+
+  it("renders the post-insert diff via renderResult", () => {
+    const tool = buildInsertToolDef();
+    const theme = {
+      fg: (_name: string, text: string) => text,
+      bold: (text: string) => text,
+      italic: (text: string) => text,
+      underline: (text: string) => text,
+      strikethrough: (text: string) => text,
+    } as any;
+    const result = {
+      content: [{ type: "text", text: "Successfully inserted in sample.ts. Added 1 line(s), removed 1 line(s)." }],
+      details: {
+        diff: "+aB3│BETA1\n-aB3│beta",
+        metrics: { classification: "applied", added_lines: 1, removed_lines: 1 },
+      },
+    };
+    const component = tool.renderResult!(result as any, { expanded: false, isPartial: false }, theme, { state: {}, lastComponent: undefined, isError: false } as any) as any;
+    expect(component.text).toContain("+aB3│BETA1");
+    expect(component.text).toContain("-aB3│beta");
+  });
+
+  it("computes a diff preview in renderCall for insert args", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\ngamma\n", async ({ cwd }) => {
+      const { ctx, readTool } = setupIntegrationTest(cwd);
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const betaHash = extractHash(getText(readResult).split("\n").find((l) => l.includes("│beta"))!);
+      const tool = buildInsertToolDef();
+      const theme = { fg: (_name: string, text: string) => text, bold: (text: string) => text };
+      const state: RRState = {};
+      let notifyInvalidate: (() => void) | undefined;
+      const invalidated = new Promise<void>((resolve) => {
+        notifyInvalidate = resolve;
+      });
+      const context = {
+        executionStarted: false,
+        argsComplete: true,
+        expanded: false,
+        cwd,
+        lastComponent: undefined,
+        invalidate: () => notifyInvalidate?.(),
+        state,
+      };
+      tool.renderCall!(
+        { path: "sample.ts", anchor: betaHash, direction: "after", lines: ["BETA1"] },
+        theme as any,
+        context as any,
+      );
+      await Promise.race([
+        invalidated,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("renderCall never produced a preview")), 2000),
+        ),
+      ]);
+      expect(state.preview).toHaveProperty("diff");
+      expect((state.preview as { diff: string }).diff).toContain("BETA1");
     });
   });
 });

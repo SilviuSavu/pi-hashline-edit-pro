@@ -1,3 +1,4 @@
+import { Markdown, Text } from "@earendil-works/pi-tui";
 import type { Theme } from "@earendil-works/pi-coding-agent";
 import { normReq } from "./replace-normalize";
 import type { ReqParams, ReplaceDetails } from "./replace";
@@ -89,17 +90,18 @@ export function fmtResult(diff: string, theme: FgT): string {
 }
 
 export function fmtCall(
-	args: ReqParams | undefined,
+	args: { path?: string } | undefined,
 	state: RRState,
 	expanded: boolean,
 	theme: CallT,
+	toolName = "replace",
 ): string {
 	const path = args?.path;
 	const pathDisplay =
 		typeof path === "string" && path.length > 0
 			? theme.fg("accent", path)
 			: theme.fg("toolOutput", "...");
-	let text = `${theme.fg("toolTitle", theme.bold("replace"))} ${pathDisplay}`;
+	let text = `${theme.fg("toolTitle", theme.bold(toolName))} ${pathDisplay}`;
 
 	if (!state.preview) {
 		return text;
@@ -209,3 +211,116 @@ export function mkMdTheme(theme: MdTheme) {
 			}),
 	};
 }
+
+export const PREVIEW_DEBOUNCE_MS = 150;
+
+export function reuseText(context: any, content: string): Text {
+	const t = context.lastComponent instanceof Text
+		? context.lastComponent
+		: new Text("", 0, 0);
+	t.setText(content);
+	return t;
+}
+
+export function reuseMarkdown(context: any, content: string, theme: any): Markdown {
+	const m = context.lastComponent instanceof Markdown
+		? context.lastComponent
+		: new Markdown("", 0, 0, mkMdTheme(theme));
+	m.setText(content);
+	return m;
+}
+
+export function makeRenderCall(
+	preview: (args: unknown, cwd: string) => Promise<RPreview>,
+	options: { getInput?: (args: unknown) => { path?: string } | null; toolName?: string } = {},
+) {
+	const getInput = options.getInput ?? getPreviewInput;
+	const toolName = options.toolName ?? "replace";
+	return (args: any, theme: CallT, context: any): Text => {
+		const previewInput = getInput(args);
+		const cancelPendingPreview = () => {
+			if (context.state.previewTimer) {
+				clearTimeout(context.state.previewTimer);
+				context.state.previewTimer = undefined;
+			}
+		};
+		if (context.executionStarted) {
+			cancelPendingPreview();
+			context.state.argsKey = undefined;
+			context.state.preview = undefined;
+			context.state.previewGeneration = (context.state.previewGeneration ?? 0) + 1;
+		} else if (!context.argsComplete || !previewInput) {
+			cancelPendingPreview();
+			context.state.argsKey = undefined;
+			context.state.preview = undefined;
+			context.state.previewGeneration = (context.state.previewGeneration ?? 0) + 1;
+		} else {
+			const argsKey = JSON.stringify(previewInput);
+			if (context.state.argsKey !== argsKey) {
+				cancelPendingPreview();
+				context.state.argsKey = argsKey;
+				context.state.preview = undefined;
+				const previewGeneration = (context.state.previewGeneration ?? 0) + 1;
+				context.state.previewGeneration = previewGeneration;
+				context.state.previewTimer = setTimeout(() => {
+					context.state.previewTimer = undefined;
+					preview(args, context.cwd)
+						.then((result) => {
+							if (
+								context.state.argsKey === argsKey &&
+								context.state.previewGeneration === previewGeneration
+							) {
+								context.state.preview = result;
+								context.invalidate();
+							}
+						})
+						.catch((err: unknown) => {
+							if (
+								context.state.argsKey === argsKey &&
+								context.state.previewGeneration === previewGeneration
+							) {
+								context.state.preview = {
+									error: err instanceof Error ? err.message : String(err),
+								};
+								context.invalidate();
+							}
+						});
+				}, PREVIEW_DEBOUNCE_MS);
+			}
+		}
+		const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
+		text.setText(fmtCall(getInput(args) ?? undefined, context.state as RRState, context.expanded, theme, toolName));
+		return text;
+	};
+}
+
+export function renderEditResult(
+	result: { content?: Array<{ type: string; text?: string }>; details?: ReplaceDetails },
+	isPartial: boolean,
+	theme: FgT,
+	context: any,
+): Text | Markdown {
+	if (isPartial) return reuseText(context, theme.fg("warning", "Editing..."));
+	const renderedText = getResultText(result);
+	const renderState = context.state as RRState | undefined;
+	if (renderState) {
+		if (renderState.previewTimer) {
+			clearTimeout(renderState.previewTimer);
+			renderState.previewTimer = undefined;
+		}
+		renderState.preview = undefined;
+		renderState.previewGeneration = (renderState.previewGeneration ?? 0) + 1;
+	}
+	if (context.isError) {
+		return renderedText
+			? reuseText(context, `\n${theme.fg("error", renderedText)}`)
+			: new Text("", 0, 0);
+	}
+	if (isApplied(result.details)) {
+		const appliedText = buildAppliedText(renderedText, result.details, theme);
+		return appliedText ? reuseText(context, appliedText) : new Text("", 0, 0);
+	}
+	if (!renderedText) return new Text("", 0, 0);
+	return reuseMarkdown(context, fmtResultMd(renderedText), theme);
+}
+

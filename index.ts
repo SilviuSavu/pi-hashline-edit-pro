@@ -4,7 +4,7 @@ import { initHasher } from "./src/hashline";
 import { regReplace } from "./src/replace";
 import { regInsert } from "./src/insert";
 import { regGrep } from "./src/grep";
-import { regReplaceUndo, clearUndo } from "./src/replace-undo";
+import { regUndo, clearUndo } from "./src/replace-undo";
 import { regRead, fmtReadPreview } from "./src/read";
 import type { RMetrics } from "./src/replace-response";
 import { extractWarnings } from "./src/replace-render";
@@ -29,7 +29,7 @@ export default function (pi: ExtensionAPI): void {
   regReplace(pi);
   regInsert(pi);
   regGrep(pi);
-  regReplaceUndo(pi);
+  regUndo(pi);
 
   let autoRead = true;
 
@@ -52,7 +52,7 @@ export default function (pi: ExtensionAPI): void {
   });
 
   pi.registerCommand("toggle-auto-read", {
-    description: "Toggle auto-read anchors after write and post-edit diffs after replace, insert, and undo_last_replace",
+    description: "Toggle auto-read anchors after write and post-edit diffs after replace, insert, and undo_last_change",
     handler: async (_args, ctx) => {
       autoRead = await toggleAutoRead();
       const state = autoRead ? "enabled" : "disabled";
@@ -116,7 +116,7 @@ export default function (pi: ExtensionAPI): void {
     if (
       event.toolName !== "replace" &&
       event.toolName !== "insert" &&
-      event.toolName !== "undo_last_replace"
+      event.toolName !== "undo_last_change"
     ) return;
     if (!autoRead) return;
 

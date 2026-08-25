@@ -11,7 +11,7 @@ describe("insert and grep loop", () => {
       const { ctx, readTool, getTool } = setupIntegrationTest(cwd);
       const grepTool = getTool("grep");
       const insertTool = getTool("insert");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
 
       const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
       expect(getText(readResult)).toContain("│beta");

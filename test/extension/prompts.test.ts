@@ -82,9 +82,9 @@ describe("prompt guidelines", () => {
     expect(content).toContain("call again after an edit");
     expect(content).not.toContain("{{AUTO_READ_NOTE}}");
   });
-  it("undo-last-replace-guidelines.md loads without template variables", () => {
+  it("undo-last-change-guidelines.md loads without template variables", () => {
     const content = readFileSync(
-      new URL("../../prompts/undo-last-replace-guidelines.md", import.meta.url),
+      new URL("../../prompts/undo-last-change-guidelines.md", import.meta.url),
       "utf-8",
     );
     expect(content).not.toContain("{{");

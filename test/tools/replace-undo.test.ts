@@ -16,11 +16,11 @@ import register from "../../index";
 
 const home = useTestHome();
 
-describe("undo_last_replace", () => {
+describe("undo_last_change", () => {
   it("returns error when there is no undo history", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
 
       const result = await undo.execute(
         "u1",
@@ -39,7 +39,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -66,7 +66,7 @@ describe("undo_last_replace", () => {
       );
 
       expect(undoResult.isError).toBeFalsy();
-      expect(getText(undoResult)).toMatch(/undone last replace/i);
+      expect(getText(undoResult)).toMatch(/undone last change/i);
 
       const afterUndo = await readFile(join(cwd, "sample.ts"), "utf-8");
       expect(afterUndo).toBe("aaa\nbbb\nccc\n");
@@ -77,7 +77,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -96,7 +96,7 @@ describe("undo_last_replace", () => {
         ctx,
       );
       expect(undoResult.isError).toBeFalsy();
-      expect(getText(undoResult)).toMatch(/undone last replace/i);
+      expect(getText(undoResult)).toMatch(/undone last change/i);
     });
   });
 
@@ -104,7 +104,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -135,7 +135,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -176,7 +176,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -209,7 +209,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -242,7 +242,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -275,7 +275,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -309,7 +309,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -334,7 +334,7 @@ describe("undo_last_replace", () => {
         ctx,
       );
       expect(undoResult.isError).toBeFalsy();
-      expect(getText(undoResult)).toMatch(/undone last replace/i);
+      expect(getText(undoResult)).toMatch(/undone last change/i);
 
       const content = await readFile(join(cwd, "sample.ts"), "utf-8");
       expect(content).toBe("aaa\nbbb\nccc\n");
@@ -390,7 +390,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       const first = await editTool.execute(
@@ -431,7 +431,7 @@ describe("undo_last_replace", () => {
 
       const undone = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, ctx);
       expect(undone.isError).toBeFalsy();
-      expect(getText(undone)).toContain("Undone last replace");
+      expect(getText(undone)).toContain("Undone last change");
       expect(await readFile(join(cwd, "sample.ts"), "utf-8")).toBe("aaa\nbbb\nccc\n");
     });
   });
@@ -439,7 +439,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       const spy = vi
@@ -472,7 +472,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       const first = await editTool.execute(
@@ -519,7 +519,7 @@ describe("undo_last_replace", () => {
 
       const undone = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, ctx);
       expect(undone.isError).toBeFalsy();
-      expect(getText(undone)).toContain("Undone last replace");
+      expect(getText(undone)).toContain("Undone last change");
       expect(await readFile(join(cwd, "sample.ts"), "utf-8")).toBe("aaa\nbbb\nccc\n");
     });
   });
@@ -527,7 +527,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -567,7 +567,7 @@ describe("undo_last_replace", () => {
     await withTempFile("sample.ts", "line1\nline2\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("line1\nline2\n", home.testPath);
 
       await editTool.execute(
@@ -599,11 +599,11 @@ describe("undo_last_replace", () => {
     });
   });
 
-  it("refuses to undo when the file was modified after the replace", async () => {
+  it("refuses to undo when the file was modified after the edit", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -617,7 +617,7 @@ describe("undo_last_replace", () => {
       const undoResult = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, ctx);
       expect(undoResult.isError).toBe(true);
       expect(getText(undoResult)).toMatch(/E_UNDO_STALE/);
-      expect(getText(undoResult)).toMatch(/changed after the replace/i);
+      expect(getText(undoResult)).toMatch(/changed after the edit/i);
 
       const content = await readFile(join(cwd, "sample.ts"), "utf-8");
       expect(content).toBe("aaa\nEXTERNAL\nccc\n");
@@ -628,11 +628,11 @@ describe("undo_last_replace", () => {
     });
   });
 
-  it("refuses to undo when only line endings changed after the replace", async () => {
+  it("refuses to undo when only line endings changed after the edit", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -652,11 +652,11 @@ describe("undo_last_replace", () => {
     });
   });
 
-  it("refuses to undo when only the BOM changed after the replace", async () => {
+  it("refuses to undo when only the BOM changed after the edit", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -676,11 +676,11 @@ describe("undo_last_replace", () => {
     });
   });
 
-  it("refuses to undo when the file was deleted after the replace", async () => {
+  it("refuses to undo when the file was deleted after the edit", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
-      const undo = getTool("undo_last_replace");
+      const undo = getTool("undo_last_change");
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -728,7 +728,7 @@ describe("undo cleared after write", () => {
       const { pi, handlers, tools } = makePiWithToolResultCapture();
       register(pi);
       const editTool = tools.get("replace")!;
-      const undo = tools.get("undo_last_replace")!;
+      const undo = tools.get("undo_last_change")!;
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -754,7 +754,7 @@ describe("undo cleared after write", () => {
       const { pi, handlers, tools } = makePiWithToolResultCapture();
       register(pi);
       const editTool = tools.get("replace")!;
-      const undo = tools.get("undo_last_replace")!;
+      const undo = tools.get("undo_last_change")!;
       const hashes = await lineHashes("aaa\nbbb\nccc\n", home.testPath);
 
       await editTool.execute(
@@ -771,7 +771,7 @@ describe("undo cleared after write", () => {
 
       const undoResult = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, { cwd } as any);
       expect(undoResult.isError).toBeFalsy();
-      expect(getText(undoResult)).toMatch(/undone last replace/i);
+      expect(getText(undoResult)).toMatch(/undone last change/i);
     });
   });
 });

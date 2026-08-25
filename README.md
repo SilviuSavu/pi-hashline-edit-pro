@@ -155,7 +155,7 @@ Notes:
 
 ## Undo
 
-`undo_last_replace` reverts the most recent successful `replace` or `insert` on a file, restoring the exact previous content, BOM and line endings included, plus the previous anchors.
+`undo_last_change` reverts the most recent successful `replace` or `insert` on a file, restoring the exact previous content, BOM and line endings included, plus the previous anchors.
 
 - History is per-file and single-level: only the most recent replace or insert can be reverted.
 - History is persisted and survives session restarts. A failed `write` does not clear it.
@@ -167,7 +167,7 @@ Notes:
 
 Enabled by default. After a successful `write` that changes the file, the extension reads the file and appends an `--- Auto-read (hashline anchors) ---` block to the result, so you get fresh `HASH│content` anchors without a separate `read` call.
 
-- After `replace`, `insert`, and `undo_last_replace`, the result shows the post-edit diff. The `+HASH│` and ` HASH│` rows carry the current hashes, so follow-up edits can anchor on the diff directly. The `-HASH│` rows show removed lines with their old hashes, so you can see exactly which anchors were deleted (those hashes are stale after the edit). When the context line touching a change is blank or whitespace-only, one more context line is shown in that direction, so the change stays anchored to visible content. Call `read` when you want the full file's anchors.
+- After `replace`, `insert`, and `undo_last_change`, the result shows the post-edit diff. The `+HASH│` and ` HASH│` rows carry the current hashes, so follow-up edits can anchor on the diff directly. The `-HASH│` rows show removed lines with their old hashes, so you can see exactly which anchors were deleted (those hashes are stale after the edit). When the context line touching a change is blank or whitespace-only, one more context line is shown in that direction, so the change stays anchored to visible content. Call `read` when you want the full file's anchors.
 - Auto-read keeps a 50KB display budget. Lines over 50KB are skipped with a marker instead of their content (use `read` for lines up to 200KB).
 - Toggle at runtime with `/toggle-auto-read`; the setting persists across sessions.
 
@@ -177,14 +177,14 @@ All five tools return machine-readable metadata in `details` alongside the model
 
 - `read`: `details.truncation` (set when the output was truncated), `details.snapshotId` (a `v2|path|ino|mtime|ctime|size` fingerprint of the file), `details.nextOffset` (use as the next `offset`), and `details.metrics` with `truncated` and `next_offset`.
 - `replace` and `insert`: `details.diff` (the post-edit diff; `+HASH│` and ` HASH│` rows carry the current anchors), `details.patch` (a standard unified patch of the changes, for external tools), `details.firstChangedLine`, `details.snapshotId`, `details.classification` (`"noop"` when nothing changed), and `details.metrics`: `edits_attempted`, `edits_noop`, `warnings`, `classification` (`"applied"` or `"noop"`), `changed_lines` (`{ first, last }`), `added_lines`, `removed_lines`.
-- `undo_last_replace`: `details.diff` (the undo diff with the restored anchors), `details.patch` (a standard unified patch of the restored changes), and `details.metrics` (same shape as `replace`).
+- `undo_last_change`: `details.diff` (the undo diff with the restored anchors), `details.patch` (a standard unified patch of the restored changes), and `details.metrics` (same shape as `replace`).
 - `grep`: `details.metrics` with `matches`, `files`, and `truncated`.
 
 ## Settings
 
 | Command | Description |
 | --- | --- |
-| `/toggle-auto-read` | Toggle auto-read anchors after write and post-edit diffs after replace, insert, and undo_last_replace. Persists across sessions. |
+| `/toggle-auto-read` | Toggle auto-read anchors after write and post-edit diffs after replace, insert, and undo_last_change. Persists across sessions. |
 
 Settings live in `~/.config/pi-hashline-edit-pro/config.json`, created automatically when a setting is toggled. On non-Windows platforms, the config directory honors `XDG_CONFIG_HOME` when set (falling back to `~/.config`); on Windows it always uses `~/.config`:
 
@@ -228,8 +228,8 @@ A no-op replace never changes the file, so anchors remain valid. On first run af
 | `[E_NOT_FOUND]` | The path does not exist. |
 | `[E_ACCESS]` | The file is not readable or writable. |
 | `[E_NOT_TEXT]` | The path is a directory, binary file, image, or UTF-16/UTF-32 encoded text; hashline editing only supports text files. |
-| `[E_UNDO_STALE]` | `undo_last_replace` refused: the file was modified or deleted after the last replace. |
-| `[E_UNDO_UNAVAILABLE]` | Undo history could not be persisted to the hash store; the `replace` was refused and the file was left unchanged. |
+| `[E_UNDO_STALE]` | `undo_last_change` refused: the file was modified or deleted after the last edit. |
+| `[E_UNDO_UNAVAILABLE]` | Undo history could not be persisted to the hash store; the edit was refused and the file was left unchanged. |
 | `[E_RANGE_STALE]` | A line in the replaced range no longer matches what was last shown (the file changed on disk, or the line was never shown). The edit was refused; the current range is returned with fresh anchors. |
 | `[E_BOUNDARY_BYPASS]` | The boundary anti-duplication was turned off for one replace call (an identical replacement had previously been cut to a noop); the duplicate lines were applied literally. The dedup is restored for the next call. |
 | `[E_FILE_TOO_LARGE]` | The file exceeds the 238,328-line hashline limit or the 100MB size limit. |

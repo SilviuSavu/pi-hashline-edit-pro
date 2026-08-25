@@ -85,13 +85,13 @@ export async function clearUndo(path: string): Promise<void> {
   }
 }
 
-export function regReplaceUndo(pi: ExtensionAPI): void {
+export function regUndo(pi: ExtensionAPI): void {
   pi.registerTool({
-    name: "undo_last_replace",
-    label: "Undo Last Replace",
-    description: loadP("../prompts/undo-last-replace.md"),
-    promptSnippet: loadP("../prompts/undo-last-replace-snippet.md"),
-    promptGuidelines: loadGuide("../prompts/undo-last-replace-guidelines.md"),
+    name: "undo_last_change",
+    label: "Undo Last Change",
+    description: loadP("../prompts/undo-last-change.md"),
+    promptSnippet: loadP("../prompts/undo-last-change-snippet.md"),
+    promptGuidelines: loadGuide("../prompts/undo-last-change-guidelines.md"),
     prepareArguments: makePrepareArguments(),
     parameters: Type.Object({
       path: Type.String({
@@ -132,7 +132,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
             content: [
               {
                 type: "text",
-                text: `[E_UNDO_STALE] Cannot undo last replace on ${path}: the file no longer exists.`
+                text: `[E_UNDO_STALE] Cannot undo last change on ${path}: the file no longer exists.`
               },
             ],
             isError: true,
@@ -145,7 +145,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
             content: [
               {
                 type: "text",
-                text: `[E_UNDO_STALE] Cannot undo last replace on ${path}: the file changed after the replace. Call read() to inspect the current state.`
+                text: `[E_UNDO_STALE] Cannot undo last change on ${path}: the file changed after the edit. Call read() to inspect the current state.`
               },
             ],
             isError: true,
@@ -178,7 +178,7 @@ export function regReplaceUndo(pi: ExtensionAPI): void {
         await clearUndo(mutationTargetPath);
 
         const parts: string[] = [
-          `Undone last replace on ${path}.`,
+          `Undone last change on ${path}.`,
         ];
         if (linesAddedByReplace > 0 || linesRemovedByReplace > 0) {
           parts.push(

@@ -1,4 +1,3 @@
-import { Markdown, Text } from "@earendil-works/pi-tui";
 import type {
   ExtensionAPI,
   ToolDefinition,
@@ -27,16 +26,12 @@ import { applyEdit,
 import { toCwd } from "./paths";
 import type { RMetrics } from "./replace-response";
 import {
-  buildAppliedText,
-  mkMdTheme,
-  fmtCall,
-  fmtResultMd,
-  getPreviewInput,
-  getResultText,
-  isApplied,
+  makeRenderCall,
+  renderEditResult,
   type RPreview,
   type RRState,
 } from "./replace-render";
+export { reuseText, reuseMarkdown } from "./replace-render";
 import { loadP, loadGuide } from "./prompts";
 import { loadHashStore, findSnapshotPaths, type HashStore } from "./hash-store";
 import { getServed, recordServedSafe } from "./served";
@@ -105,8 +100,6 @@ export interface PipelineResult {
   hadBoundaryDedup: boolean;
   boundaryRemovedLines: number;
 }
-
-const PREVIEW_DEBOUNCE_MS = 150;
 
 const ROOT_KS = new Set(["path", "remove_from", "remove_to", "replacement_lines"]);
 
@@ -333,21 +326,6 @@ type ToolDef = ToolDefinition<
   RRState
 > & { renderShell?: "default" | "self" };
 
-export function reuseText(context: any, content: string): Text {
-  const t = context.lastComponent instanceof Text
-    ? context.lastComponent
-    : new Text("", 0, 0);
-  t.setText(content);
-  return t;
-}
-
-export function reuseMarkdown(context: any, content: string, theme: any): Markdown {
-  const m = context.lastComponent instanceof Markdown
-    ? context.lastComponent
-    : new Markdown("", 0, 0, mkMdTheme(theme));
-  m.setText(content);
-  return m;
-}
 
 export function buildToolDef(): ToolDef {
   const E_DESC = loadP("../prompts/replace.md");
@@ -364,107 +342,17 @@ export function buildToolDef(): ToolDef {
     promptGuidelines: E_GUIDE,
     prepareArguments: makePrepareArguments(),
     renderShell: "default",
-    renderCall(args, theme, context) {
-      const previewInput = getPreviewInput(args);
-      const cancelPendingPreview = () => {
-        if (context.state.previewTimer) {
-          clearTimeout(context.state.previewTimer);
-          context.state.previewTimer = undefined;
-        }
-      };
-      if (context.executionStarted) {
-        cancelPendingPreview();
-        context.state.argsKey = undefined;
-        context.state.preview = undefined;
-        context.state.previewGeneration =
-          (context.state.previewGeneration ?? 0) + 1;
-      } else if (!context.argsComplete || !previewInput) {
-        cancelPendingPreview();
-        context.state.argsKey = undefined;
-        context.state.preview = undefined;
-        context.state.previewGeneration =
-          (context.state.previewGeneration ?? 0) + 1;
-      } else {
-        const argsKey = JSON.stringify(previewInput);
-        if (context.state.argsKey !== argsKey) {
-          cancelPendingPreview();
-          context.state.argsKey = argsKey;
-          context.state.preview = undefined;
-          const previewGeneration = (context.state.previewGeneration ?? 0) + 1;
-          context.state.previewGeneration = previewGeneration;
-          context.state.previewTimer = setTimeout(() => {
-            context.state.previewTimer = undefined;
-            compPreview(args, context.cwd)
-              .then((preview) => {
-                if (
-                  context.state.argsKey === argsKey &&
-                  context.state.previewGeneration === previewGeneration
-                ) {
-                  context.state.preview = preview;
-                  context.invalidate();
-                }
-              })
-              .catch((err: unknown) => {
-                if (
-                  context.state.argsKey === argsKey &&
-                  context.state.previewGeneration === previewGeneration
-                ) {
-                  context.state.preview = {
-                    error: err instanceof Error ? err.message : String(err),
-                  };
-                  context.invalidate();
-                }
-              });
-          }, PREVIEW_DEBOUNCE_MS);
-        }
-      }
-      const text =
-        (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-      text.setText(
-        fmtCall(
-          getPreviewInput(args) ?? undefined,
-          context.state as RRState,
-          context.expanded,
-          theme,
-        ),
-      );
-      return text;
-    },
-
+    renderCall: makeRenderCall(compPreview),
     renderResult(result, { isPartial }, theme, context) {
-      if (isPartial) {
-        return reuseText(context, theme.fg("warning", "Editing..."));
-      }
-
-      const typedResult = result as {
-        content?: Array<{ type: string; text?: string }>;
-        details?: ReplaceDetails;
-      };
-      const renderedText = getResultText(typedResult);
-
-      const renderState = context.state as RRState | undefined;
-      if (renderState) {
-        if (renderState.previewTimer) {
-          clearTimeout(renderState.previewTimer);
-          renderState.previewTimer = undefined;
-        }
-        renderState.preview = undefined;
-        renderState.previewGeneration = (renderState.previewGeneration ?? 0) + 1;
-      }
-
-      if (context.isError) {
-        return renderedText
-          ? reuseText(context, `\n${theme.fg("error", renderedText)}`)
-          : new Text("", 0, 0);
-      }
-
-      if (isApplied(typedResult.details)) {
-        const appliedText = buildAppliedText(renderedText, typedResult.details, theme);
-        return appliedText ? reuseText(context, appliedText) : new Text("", 0, 0);
-      }
-
-      if (!renderedText) return new Text("", 0, 0);
-      return reuseMarkdown(context, fmtResultMd(renderedText), theme);
+      return renderEditResult(
+        result as {
+          content?: Array<{ type: string; text?: string }>;
+          details?: ReplaceDetails;
+        },
+        isPartial,
+        theme,
+        context,
+      );
     },
 
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {

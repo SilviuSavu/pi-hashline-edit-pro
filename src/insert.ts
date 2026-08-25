@@ -1,16 +1,18 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { constants } from "fs";
-import { execPipeline, type ReqParams } from "./replace";
+import { execPipeline, type ReqParams, type ReplaceDetails } from "./replace";
 import { commitEdit } from "./commit";
-import { readNormFile } from "./file-reader";
+import { readNormFile, type NormFile } from "./file-reader";
 import { resolveTarget } from "./fs-write";
-import { MAX_HASH_LINES, parseHashRef, resolveAnchorLine } from "./hashline";
+import { MAX_HASH_LINES, parseHashRef, resolveAnchorLine, type Anchor } from "./hashline";
 import { stripAnchorRow } from "./hashline/resolve";
 import { toCwd } from "./paths";
 import { loadP, loadGuide } from "./prompts";
 import { normReq } from "./replace-normalize";
+import { genDiff } from "./replace-diff";
+import { makeRenderCall, renderEditResult, type RPreview, type RRState } from "./replace-render";
 import { abortIf, isRec, makePrepareArguments, rejectUnknownFields, splitLines } from "./utils";
 import { clearBoundaryBypass } from "./boundary-bypass";
 
@@ -73,8 +75,89 @@ const insertToolSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export function regInsert(pi: ExtensionAPI): void {
-  pi.registerTool({
+function parseInsertAnchor(raw: string): { ref: Anchor; warnings: string[] } {
+  const trimmedAnchor = raw.trim();
+  const warnings: string[] = [];
+  const anchorText = stripAnchorRow(trimmedAnchor, "anchor entry", warnings);
+  return { ref: parseHashRef(anchorText), warnings };
+}
+
+function buildInsertEdit(
+  req: InsertReq,
+  preload: NormFile,
+  ref: Anchor,
+): { editParams: ReqParams; anchorLine: string | undefined } {
+  const fileLines = splitLines(preload.normalized);
+  const line = resolveAnchorLine(ref, fileLines, preload.fileHashes, req.path);
+  const anchorLine = preload.normalized.length === 0 ? undefined : fileLines[line - 1];
+  const editParams: ReqParams = {
+    path: req.path,
+    remove_from: ref.hash,
+    remove_to: ref.hash,
+    replacement_lines:
+      anchorLine === undefined
+        ? [...req.lines]
+        : req.direction === "after"
+          ? [anchorLine, ...req.lines]
+          : [...req.lines, anchorLine],
+  };
+  return { editParams, anchorLine };
+}
+
+export async function insertPreview(request: unknown, cwd: string): Promise<RPreview> {
+  try {
+    const normalized = normReq(request);
+    assertInsertReq(normalized);
+    const { ref } = parseInsertAnchor(normalized.anchor);
+    const preload = await readNormFile(normalized.path, cwd, {
+      accessMode: constants.R_OK,
+      maxLines: MAX_HASH_LINES,
+      noPersist: true,
+    });
+    const { editParams } = buildInsertEdit(normalized, preload, ref);
+    const pipe = await execPipeline(editParams, cwd, {
+      accessMode: constants.R_OK,
+      noPersist: true,
+      preloadedNorm: preload,
+      skipBoundaryDedup: true,
+    });
+    if (pipe.originalNormalized === pipe.result) {
+      return { error: `No changes made to ${normalized.path}. The edit produced identical content.` };
+    }
+    return { diff: genDiff(pipe.originalNormalized, pipe.result, 4, pipe.resultHashes, pipe.originalHashes).diff };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+function getInsertInput(args: unknown): { path?: string; anchor?: string; direction?: "before" | "after"; lines?: string[] } | null {
+  let normalized: unknown;
+  try {
+    normalized = normReq(args);
+  } catch {
+    return null;
+  }
+  if (!isRec(normalized) || typeof normalized.path !== "string") return null;
+  if (
+    typeof normalized.anchor !== "string" ||
+    (normalized.direction !== "before" && normalized.direction !== "after") ||
+    !Array.isArray(normalized.lines) ||
+    normalized.lines.some((line) => typeof line !== "string")
+  ) {
+    return null;
+  }
+  return {
+    path: normalized.path,
+    anchor: normalized.anchor,
+    direction: normalized.direction,
+    lines: normalized.lines,
+  };
+}
+
+type InsertToolDef = ToolDefinition<any, ReplaceDetails, RRState> & { renderShell?: "default" | "self" };
+
+export function buildInsertToolDef(): InsertToolDef {
+  return {
     name: "insert",
     label: "Insert",
     description: loadP("../prompts/insert.md"),
@@ -82,16 +165,26 @@ export function regInsert(pi: ExtensionAPI): void {
     promptGuidelines: loadGuide("../prompts/insert-guidelines.md"),
     prepareArguments: makePrepareArguments(),
     parameters: insertToolSchema,
+    renderShell: "default",
+    renderCall: makeRenderCall(insertPreview, { getInput: getInsertInput, toolName: "insert" }),
+    renderResult(result, { isPartial }, theme, context) {
+      return renderEditResult(
+        result as {
+          content?: Array<{ type: string; text?: string }>;
+          details?: ReplaceDetails;
+        },
+        isPartial,
+        theme,
+        context,
+      );
+    },
 
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const canonical = normReq(params);
       assertInsertReq(canonical);
       const req = canonical;
       const path = req.path;
-      const trimmedAnchor = req.anchor.trim();
-      const anchorWarnings: string[] = [];
-      const anchorText = stripAnchorRow(trimmedAnchor, "anchor entry", anchorWarnings);
-      const ref = parseHashRef(anchorText);
+      const { ref, warnings: anchorWarnings } = parseInsertAnchor(req.anchor);
       const absolutePath = toCwd(path, ctx.cwd);
       const mutationTargetPath = await resolveTarget(absolutePath);
       return withFileMutationQueue(mutationTargetPath, async () => {
@@ -101,20 +194,7 @@ export function regInsert(pi: ExtensionAPI): void {
           accessMode: constants.R_OK | constants.W_OK,
           maxLines: MAX_HASH_LINES,
         });
-        const fileLines = splitLines(preload.normalized);
-        const line = resolveAnchorLine(ref, fileLines, preload.fileHashes, path);
-        const anchorLine = preload.normalized.length === 0 ? undefined : fileLines[line - 1];
-        const editParams: ReqParams = {
-          path,
-          remove_from: ref.hash,
-          remove_to: ref.hash,
-          replacement_lines:
-            anchorLine === undefined
-              ? [...req.lines]
-              : req.direction === "after"
-                ? [anchorLine, ...req.lines]
-                : [...req.lines, anchorLine],
-        };
+        const { editParams, anchorLine } = buildInsertEdit(req, preload, ref);
         const pipe = await execPipeline(editParams, ctx.cwd, {
           accessMode: constants.R_OK | constants.W_OK,
           signal,
@@ -134,5 +214,9 @@ export function regInsert(pi: ExtensionAPI): void {
         });
       });
     },
-  });
+  };
+}
+
+export function regInsert(pi: ExtensionAPI): void {
+  pi.registerTool(buildInsertToolDef());
 }
