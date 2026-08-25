@@ -35,7 +35,7 @@ export default function (pi: ExtensionAPI): void {
 
   pi.on("session_start", async (_event, ctx) => {
     const active = pi.getActiveTools();
-    pi.setActiveTools(active.filter((t) => t !== "edit" && t !== "grep"));
+    pi.setActiveTools(active.filter((t) => t !== "edit"));
     await initHasher();
     try {
       const store = await loadHashStore();

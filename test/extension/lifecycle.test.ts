@@ -29,7 +29,7 @@ async function registerExtension(pi: any) {
 }
 
 describe("session_start lifecycle", () => {
-  it("removes the built-in edit and grep tools from active tools", async () => {
+  it("removes the built-in edit tool while keeping the extension's grep active", async () => {
     await withTempDir("lifecycle-tools-", async (dir) => {
       const { pi, handlers } = makeLifecyclePi();
       pi.setActiveTools(["read", "replace", "edit", "grep", "bash"]);
@@ -37,7 +37,7 @@ describe("session_start lifecycle", () => {
       const sessionStart = handlers.get("session_start");
       expect(sessionStart).toBeDefined();
       await sessionStart!({}, { cwd: dir, ui: { notify: vi.fn() } });
-      expect(pi.getActiveTools()).toEqual(["read", "replace", "bash"]);
+      expect(pi.getActiveTools()).toEqual(["read", "replace", "grep", "bash"]);
     });
   });
 
