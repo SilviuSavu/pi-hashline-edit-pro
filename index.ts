@@ -65,13 +65,14 @@ export default function (pi: ExtensionAPI): void {
 
     if (event.toolName === "write") {
       const writtenPath = (event.input as Record<string, unknown>)?.path;
+      let resolvedPath: string | undefined;
       if (typeof writtenPath === "string") {
         try {
-          const target = await resolveTarget(toCwd(writtenPath, ctx.cwd));
-          await clearUndo(target);
-          clearBoundaryBypass(target);
+          resolvedPath = await resolveTarget(toCwd(writtenPath, ctx.cwd));
+          await clearUndo(resolvedPath);
+          clearBoundaryBypass(resolvedPath);
           const store = await loadHashStore();
-          clearServed(store, target);
+          clearServed(store, resolvedPath);
         } catch (error) {
           console.error("Failed to clear undo after write:", error);
         }
@@ -79,7 +80,7 @@ export default function (pi: ExtensionAPI): void {
       if (!autoRead) return;
       if (typeof writtenPath !== "string") return;
       try {
-        const resolvedPath = await resolveTarget(toCwd(writtenPath, ctx.cwd));
+        resolvedPath ??= await resolveTarget(toCwd(writtenPath, ctx.cwd));
         await valAccess(resolvedPath, writtenPath);
         const file = await loadFileKindAndText(resolvedPath, { maxLines: MAX_HASH_LINES, displayPath: writtenPath });
         if (file.kind !== "text") return;

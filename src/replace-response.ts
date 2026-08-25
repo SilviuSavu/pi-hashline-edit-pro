@@ -1,3 +1,4 @@
+import type { NEdit } from "./hashline";
 import type { ReplaceDetails } from "./replace";
 import { genDiff, genPatch } from "./replace-diff";
 import { visLines, clipLine } from "./utils";
@@ -27,14 +28,9 @@ export type RMeta = {
   removedLines: number;
 };
 
-type NEditEntry = {
-	loc: string;
-	currentContent: string;
-};
-
 export interface NoopInput {
 	path: string;
-	noopEdit: NEditEntry | undefined;
+	noopEdit: NEdit | undefined;
 	snapshotId?: string;
 	editMeta: RMeta;
 	warnings: string[] | undefined;

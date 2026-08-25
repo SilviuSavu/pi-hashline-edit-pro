@@ -66,6 +66,7 @@ interface Prepared {
   get: (...params: SqlParams) => Record<string, unknown> | undefined;
   allPaths: (...params: SqlParams) => Record<string, unknown>[];
   allHashes: (...params: SqlParams) => Record<string, unknown>[];
+  allServed: (...params: SqlParams) => Record<string, unknown>[];
   deleteOne: (...params: SqlParams) => void;
   upsert: (...params: SqlParams) => void;
   undoUpsert: (...params: SqlParams) => void;
@@ -263,6 +264,7 @@ function buildStore(
   const getStmt = db.prepare("SELECT hashes FROM snapshots WHERE path = ? AND checksum = ? AND line_count = ?");
   const allStmt = db.prepare("SELECT path FROM snapshots UNION SELECT path FROM undo UNION SELECT path FROM served");
   const allHashesStmt = db.prepare("SELECT path, hashes FROM snapshots");
+  const allServedStmt = db.prepare("SELECT path, hashes FROM served");
   const delStmt = db.prepare("DELETE FROM snapshots WHERE path = ?");
   const upsertStmt = db.prepare(
     "INSERT INTO snapshots (path, checksum, line_count, hashes, updated_at) VALUES (?, ?, ?, ?, ?) " +
@@ -286,6 +288,7 @@ function buildStore(
     get: (...params) => getStmt.get(...params) as Record<string, unknown> | undefined,
     allPaths: (...params) => allStmt.all(...params) as Record<string, unknown>[],
     allHashes: (...params) => allHashesStmt.all(...params) as Record<string, unknown>[],
+    allServed: (...params) => allServedStmt.all(...params) as Record<string, unknown>[],
     deleteOne: retriedWrite(delStmt),
     upsert: retriedWrite(upsertStmt),
     undoUpsert: retriedWrite(undoUpsertStmt),
@@ -592,8 +595,10 @@ export async function pruneMissing(store: HashStore): Promise<void> {
   });
 }
 
-export function findSnapshotPaths(store: HashStore, hashes: string[]): string[] {
-  const rows = store.stmts.allHashes() as { path: string; hashes: string }[];
+function matchPathsByHashes(
+  rows: { path: string; hashes: string }[],
+  hashes: string[],
+): string[] {
   const matches: string[] = [];
   for (const row of rows) {
     try {
@@ -605,4 +610,12 @@ export function findSnapshotPaths(store: HashStore, hashes: string[]): string[] 
     }
   }
   return matches;
+}
+
+export function findSnapshotPaths(store: HashStore, hashes: string[]): string[] {
+  return matchPathsByHashes(store.stmts.allHashes() as { path: string; hashes: string }[], hashes);
+}
+
+export function findServedPaths(store: HashStore, hashes: string[]): string[] {
+  return matchPathsByHashes(store.stmts.allServed() as { path: string; hashes: string }[], hashes);
 }

@@ -31,9 +31,8 @@ import {
   type RPreview,
   type RRState,
 } from "./replace-render";
-export { reuseText, reuseMarkdown } from "./replace-render";
 import { loadP, loadGuide } from "./prompts";
-import { loadHashStore, findSnapshotPaths, type HashStore } from "./hash-store";
+import { loadHashStore, findSnapshotPaths, findServedPaths, type HashStore } from "./hash-store";
 import { getServed, recordServedSafe } from "./served";
 import { noopPayloadKey, markBoundaryNoop, consumeBoundaryBypass, clearBoundaryBypass } from "./boundary-bypass";
 import { commitEdit } from "./commit";
@@ -149,7 +148,7 @@ async function resolveMissingPath(
   } catch {
     return undefined;
   }
-  const matches = findSnapshotPaths(store, hashes);
+  const matches = [...new Set([...findSnapshotPaths(store, hashes), ...findServedPaths(store, hashes)])];
   if (matches.length === 1) {
     return {
       path: matches[0]!,

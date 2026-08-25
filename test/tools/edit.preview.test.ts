@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { lineHashes } from "../../src/hashline";
-import { compPreview, buildToolDef, reuseText, reuseMarkdown } from "../../src/replace";
+import { compPreview, buildToolDef } from "../../src/replace";
 import register from "../../index";
 import type { RRState } from "../../src/replace-render";
-import { mkMdTheme } from "../../src/replace-render";
+import { mkMdTheme, reuseText, reuseMarkdown } from "../../src/replace-render";
 import { Text, Markdown } from "@earendil-works/pi-tui";
 import { makeFakePiRegistry, withTempFile, useTestHome } from "../support/fixtures";
 

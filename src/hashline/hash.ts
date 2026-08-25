@@ -47,6 +47,30 @@ export const HL_PREFIX_MINUS_RE = new RegExp(
 
 export const HL_BARE_PREFIX_RE = new RegExp(`^\\s*(${HASH_RUN})│`);
 
+export type RowPrefixKind = "bare" | "plus" | "minus";
+
+export type StrippedRow = {
+	text: string;
+	kind: RowPrefixKind | null;
+	hash: string | undefined;
+};
+
+export function stripRowPrefix(line: string): StrippedRow {
+	const bare = line.match(HL_BARE_PREFIX_RE);
+	if (bare) {
+		return { text: line.slice(bare[0].length), kind: "bare", hash: bare[1] };
+	}
+	const plus = line.match(HL_PREFIX_PLUS_RE);
+	if (plus) {
+		return { text: line.slice(plus[0].length), kind: "plus", hash: plus[1] };
+	}
+	const minus = line.match(HL_PREFIX_MINUS_RE);
+	if (minus) {
+		return { text: line.slice(minus[0].length), kind: "minus", hash: minus[1] };
+	}
+	return { text: line, kind: null, hash: undefined };
+}
+
 export function canon(line: string): string {
 	return line.replace(/\r/g, "").trimEnd();
 }

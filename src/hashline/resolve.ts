@@ -1,12 +1,11 @@
 import { abortIf, rejectUnknownFields, firstNonEmptyIndex, lastNonEmptyIndex, clipLine } from "../utils";
-import { HASH_SEP, HASH_RUN, HL_BARE_PREFIX_RE, HL_PREFIX_PLUS_RE, HL_PREFIX_MINUS_RE, canon } from "./hash";
+import { HASH_SEP, HASH_RUN, stripRowPrefix, canon } from "./hash";
 import { parseHashRef, parseText, type Anchor } from "./parse";
 import { NEW_CONTENT_NOT_ARRAY_MSG, MAX_RANGE_STALE_LINES } from "../constants";
 
 export type RAnchor = {
 	line: number;
 	hash: string;
-	hashMatched: boolean;
 };
 
 export type HEdit = { content_lines: string[]; hash_bounds: [Anchor, Anchor] };
@@ -56,7 +55,6 @@ function resAnchorFromMap(
 		return {
 			line: hashMatches[0]!,
 			hash: ref.hash,
-			hashMatched: true,
 		};
 	}
 	return { ref, kind: "ambiguous", candidates: hashMatches };
@@ -226,10 +224,10 @@ export function stripBarePrefixes(
 	const fileHashSet = new Set(fileHashes);
 	const stripped: { lineIndex: number; matched: boolean }[] = [];
 	const contentLines = edit.content_lines.map((line, lineIndex) => {
-		const match = line.match(HL_BARE_PREFIX_RE);
-		if (!match) return line;
-		stripped.push({ lineIndex, matched: fileHashSet.has(match[1]!) });
-		return line.slice(match[0].length);
+		const result = stripRowPrefix(line);
+		if (result.kind !== "bare") return line;
+		stripped.push({ lineIndex, matched: fileHashSet.has(result.hash ?? "") });
+		return result.text;
 	});
 	if (stripped.length === 0) return edit;
 	const locations = stripped
@@ -252,17 +250,10 @@ export function stripDiffPrefixes(
 ): HEdit {
 	const stripped: number[] = [];
 	const contentLines = edit.content_lines.map((line, lineIndex) => {
-		const plus = line.match(HL_PREFIX_PLUS_RE);
-		if (plus) {
-			stripped.push(lineIndex);
-			return line.slice(plus[0].length);
-		}
-		const minus = line.match(HL_PREFIX_MINUS_RE);
-		if (minus) {
-			stripped.push(lineIndex);
-			return line.slice(minus[0].length);
-		}
-		return line;
+		const result = stripRowPrefix(line);
+		if (result.kind !== "plus" && result.kind !== "minus") return line;
+		stripped.push(lineIndex);
+		return result.text;
 	});
 	if (stripped.length === 0) return edit;
 	const locations = stripped.map((i) => `replacement_lines line ${i + 1}`).join(", ");

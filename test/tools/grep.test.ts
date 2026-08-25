@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
+import { loadHashStore, getSnapshot } from "../../src/hash-store";
+import { getServed } from "../../src/served";
+import { resolveTarget } from "../../src/fs-write";
+import { toCwd } from "../../src/paths";
 import { withTempFile, withTempDir, makeFakePiRegistry, setupIntegrationTest, getText, extractHash } from "../support/fixtures";
 import register from "../../index";
 
@@ -53,6 +57,24 @@ describe("grep tool", () => {
       );
       expect(edit.content[0].text).toContain("Successfully replaced");
       expect(await import("fs/promises").then((m) => m.readFile(path, "utf-8"))).toBe("alpha\nBETA\ngamma\n");
+    });
+  });
+
+  it("does not persist hash snapshots while searching", async () => {
+    await withTempFile("sample.ts", "alpha\nbeta\n", async ({ cwd }) => {
+      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const grepTool = getTool("grep");
+
+      await grepTool.execute(
+        "g1",
+        { pattern: "beta", path: "sample.ts" },
+        undefined, undefined, ctx,
+      );
+
+      const store = await loadHashStore();
+      const resolved = await resolveTarget(toCwd("sample.ts", cwd));
+      expect(getSnapshot(store, resolved, "alpha\nbeta\n")).toBeUndefined();
+      expect(getServed(store, resolved)?.size).toBeGreaterThan(0);
     });
   });
 

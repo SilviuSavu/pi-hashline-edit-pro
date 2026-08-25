@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { lineHashes } from "../../src/hashline";
-import { withTempFile, withTempDir, setupIntegrationTest } from "../support/fixtures";
+import { withTempFile, withTempDir, setupIntegrationTest, getText, extractHash } from "../support/fixtures";
 
 describe("replace - missing path resolution", () => {
   it("resolves a missing path when the anchors uniquely identify a file", async () => {
@@ -22,6 +22,31 @@ describe("replace - missing path resolution", () => {
       expect(result.content[0].text).toContain("Warnings:");
       expect(result.content[0].text).toContain('missing "path" resolved to');
       expect(await readFile(path, "utf-8")).toBe("AAA\nbbb\n");
+    });
+  });
+
+  it("resolves a missing path from served records after a grep", async () => {
+    await withTempFile("sample.ts", "aaa\nbbb\n", async ({ cwd, path }) => {
+      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const grepTool = getTool("grep");
+      const editTool = getTool("replace");
+
+      const grepResult = await grepTool.execute(
+        "g1",
+        { pattern: "bbb", path: "sample.ts" },
+        undefined, undefined, ctx,
+      );
+      const betaHash = extractHash(getText(grepResult).split("\n").find((l) => l.includes("│bbb"))!);
+
+      const result = await editTool.execute(
+        "e1",
+        { remove_from: betaHash, remove_to: betaHash, replacement_lines: ["BBB"] },
+        undefined, undefined, ctx,
+      );
+
+      expect(result.content[0].text).toContain("Successfully replaced");
+      expect(result.content[0].text).toContain('missing "path" resolved to');
+      expect(await readFile(path, "utf-8")).toBe("aaa\nBBB\n");
     });
   });
 

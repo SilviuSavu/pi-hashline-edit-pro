@@ -155,7 +155,7 @@ async function searchFile(
   if (file.kind !== "text") return undefined;
   let norm;
   try {
-    norm = await readNormFile(absPath, cwd, { maxLines: MAX_HASH_LINES, preloadedFile: file });
+    norm = await readNormFile(absPath, cwd, { maxLines: MAX_HASH_LINES, preloadedFile: file, noPersist: true });
   } catch (error) {
     if (isSkipableLoadError(error)) return undefined;
     throw error;
