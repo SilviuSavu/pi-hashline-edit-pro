@@ -126,46 +126,34 @@ export function regUndo(pi: ExtensionAPI): void {
           if (errCode(error) !== "ENOENT") throw error;
         }
 
-        if (currentRaw === undefined) {
-          await clearUndo(mutationTargetPath);
+        if (
+          currentRaw !== undefined &&
+          currentRaw !== undo.bom + restoreEndings(undo.resultContent, undo.originalEnding)
+        ) {
           return {
             content: [
               {
                 type: "text",
-                text: `[E_UNDO_STALE] Cannot undo last change on ${path}: the file no longer exists.`
+                text: `[E_UNDO_STALE] Cannot undo last change on ${path}: the file changed after the edit. The undo record is kept; once the file matches the edited state again, undo_last_change will succeed. Call read() to inspect the current state.`
               },
             ],
             isError: true,
             details: {},
           };
         }
-        if (currentRaw !== undo.bom + restoreEndings(undo.resultContent, undo.originalEnding)) {
-          await clearUndo(mutationTargetPath);
-          return {
-            content: [
-              {
-                type: "text",
-                text: `[E_UNDO_STALE] Cannot undo last change on ${path}: the file changed after the edit. Call read() to inspect the current state.`
-              },
-            ],
-            isError: true,
-            details: {},
-          };
-        }
-
-        const { text: currentStripped } = stripBOM(currentRaw);
-        const currentNormalized = toLF(currentStripped);
-        const currentHashes = await lineHashes(currentNormalized, mutationTargetPath);
-        const diffResult = genDiff(undo.content, currentNormalized, 0, undefined, undo.hashes);
-        const linesAddedByReplace = cntDiff(diffResult.diff, "+");
-        const linesRemovedByReplace = cntDiff(diffResult.diff, "-");
-        const restoredRange = changedRange(currentNormalized, undo.content);
-        const undoDiff = genDiff(currentNormalized, undo.content, 1, undo.hashes, currentHashes).diff;
 
         await writeAtomic(
           mutationTargetPath,
           undo.bom + restoreEndings(undo.content, undo.originalEnding),
         );
+
+        const currentNormalized = currentRaw === undefined ? "" : toLF(stripBOM(currentRaw).text);
+        const currentHashes = await lineHashes(currentNormalized, mutationTargetPath);
+        const diffResult = genDiff(undo.content, undo.resultContent, 0, undefined, undo.hashes);
+        const linesAddedByReplace = cntDiff(diffResult.diff, "+");
+        const linesRemovedByReplace = cntDiff(diffResult.diff, "-");
+        const restoredRange = changedRange(currentNormalized, undo.content);
+        const undoDiff = genDiff(currentNormalized, undo.content, 1, undo.hashes, currentHashes).diff;
 
         try {
           const store = await loadHashStore();
@@ -180,6 +168,9 @@ export function regUndo(pi: ExtensionAPI): void {
         const parts: string[] = [
           `Undone last change on ${path}.`,
         ];
+        if (currentRaw === undefined) {
+          parts.push("The file was deleted; restored it from undo history.");
+        }
         if (linesAddedByReplace > 0 || linesRemovedByReplace > 0) {
           parts.push(
             `Removed ${linesAddedByReplace} line(s), restored ${linesRemovedByReplace} line(s).`,

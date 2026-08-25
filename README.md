@@ -161,7 +161,9 @@ Notes:
 - History is persisted and survives session restarts. A failed `write` does not clear it.
 - Every applied replace or insert is undoable: the undo record is saved before the edit is written.
 - A successful `write` clears the history for that file.
-- If the file was modified or deleted since the last replace or insert, the undo is refused rather than overwriting those changes.
+- If the file was modified since the last replace or insert, the undo is refused rather than overwriting those changes. The undo record is kept: once the file matches the edited state again (for example you revert the external change), `undo_last_change` succeeds.
+- If the file was deleted since the last replace or insert, `undo_last_change` restores it from the recorded pre-edit content. Nothing is overwritten, since the file no longer exists.
+- Missing-file cleanup never touches the undo record: the per-session prune of the hash store removes the snapshots and served records of files that no longer exist (both are recomputed on the next read), but the undo history survives — even when the file is temporarily absent, for example during a branch switch.
 
 ## Auto-read
 
@@ -228,7 +230,7 @@ A no-op replace never changes the file, so anchors remain valid. On first run af
 | `[E_NOT_FOUND]` | The path does not exist. |
 | `[E_ACCESS]` | The file is not readable or writable. |
 | `[E_NOT_TEXT]` | The path is a directory, binary file, image, or UTF-16/UTF-32 encoded text; hashline editing only supports text files. |
-| `[E_UNDO_STALE]` | `undo_last_change` refused: the file was modified or deleted after the last edit. |
+| `[E_UNDO_STALE]` | `undo_last_change` refused: the file was modified after the last edit. The undo record is kept until the file matches the edited state again or a new edit replaces it. |
 | `[E_UNDO_UNAVAILABLE]` | Undo history could not be persisted to the hash store; the edit was refused and the file was left unchanged. |
 | `[E_RANGE_STALE]` | A line in the replaced range no longer matches what was last shown (the file changed on disk, or the line was never shown). The edit was refused; the current range is returned with fresh anchors. |
 | `[E_BOUNDARY_BYPASS]` | The boundary anti-duplication was turned off for one replace call (an identical replacement had previously been cut to a noop); the duplicate lines were applied literally. The dedup is restored for the next call. |

@@ -624,7 +624,14 @@ describe("undo_last_change", () => {
 
       const second = await undo.execute("u2", { path: "sample.ts" }, undefined, undefined, ctx);
       expect(second.isError).toBe(true);
-      expect(getText(second)).toMatch(/no undo history/i);
+      expect(getText(second)).toMatch(/E_UNDO_STALE/);
+
+      await writeFile(join(cwd, "sample.ts"), "aaa\nBBB\nccc\n", "utf-8");
+
+      const third = await undo.execute("u3", { path: "sample.ts" }, undefined, undefined, ctx);
+      expect(third.isError).toBeFalsy();
+      expect(getText(third)).toMatch(/undone last change/i);
+      expect(await readFile(join(cwd, "sample.ts"), "utf-8")).toBe("aaa\nbbb\nccc\n");
     });
   });
 
@@ -676,7 +683,7 @@ describe("undo_last_change", () => {
     });
   });
 
-  it("refuses to undo when the file was deleted after the edit", async () => {
+  it("restores a file deleted after the edit", async () => {
     await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
       const { getTool, ctx } = setupIntegrationTest(cwd);
       const editTool = getTool("replace");
@@ -692,9 +699,51 @@ describe("undo_last_change", () => {
       await rm(join(cwd, "sample.ts"));
 
       const undoResult = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, ctx);
-      expect(undoResult.isError).toBe(true);
-      expect(getText(undoResult)).toMatch(/E_UNDO_STALE/);
-      expect(getText(undoResult)).toMatch(/no longer exists/i);
+      expect(undoResult.isError).toBeFalsy();
+      expect(getText(undoResult)).toMatch(/undone last change/i);
+      expect(getText(undoResult)).toMatch(/deleted; restored/i);
+      expect(getText(undoResult)).toMatch(/removed 1 line/i);
+      expect(getText(undoResult)).toMatch(/restored 1 line/i);
+
+      const content = await readFile(join(cwd, "sample.ts"), "utf-8");
+      expect(content).toBe("aaa\nbbb\nccc\n");
+
+      const diff = undoResult.details?.diff as string | undefined;
+      expect(diff).toContain(`+${hashes[1]}│bbb`);
+      const patch = undoResult.details?.patch as string | undefined;
+      expect(patch).toContain("+bbb");
+
+      const second = await undo.execute("u2", { path: "sample.ts" }, undefined, undefined, ctx);
+      expect(second.isError).toBe(true);
+      expect(getText(second)).toMatch(/no undo history/i);
+    });
+  });
+
+  it("restores an empty file deleted after a seeding edit", async () => {
+    await withTempFile("sample.ts", "", async ({ cwd }) => {
+      const { getTool, ctx, readTool } = setupIntegrationTest(cwd);
+      const editTool = getTool("replace");
+      const undo = getTool("undo_last_change");
+
+      const readResult = await readTool.execute("r1", { path: "sample.ts" }, undefined, undefined, ctx);
+      const emptyHash = getText(readResult).split("\n")[0]!.split("│")[0]!;
+
+      await editTool.execute(
+        "e1",
+        { path: "sample.ts", remove_from: emptyHash, remove_to: emptyHash, replacement_lines: ["first", "second"] },
+        undefined, undefined, ctx,
+      );
+      expect(await readFile(join(cwd, "sample.ts"), "utf-8")).toBe("first\nsecond");
+
+      await rm(join(cwd, "sample.ts"));
+
+      const undoResult = await undo.execute("u1", { path: "sample.ts" }, undefined, undefined, ctx);
+      expect(undoResult.isError).toBeFalsy();
+      expect(getText(undoResult)).toMatch(/undone last change/i);
+      expect(getText(undoResult)).toMatch(/deleted; restored/i);
+      expect(getText(undoResult)).toMatch(/removed 2 line/i);
+      expect(getText(undoResult)).toMatch(/restored 0 line/i);
+      expect(await readFile(join(cwd, "sample.ts"), "utf-8")).toBe("");
 
       const second = await undo.execute("u2", { path: "sample.ts" }, undefined, undefined, ctx);
       expect(second.isError).toBe(true);

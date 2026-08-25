@@ -17,6 +17,7 @@ import {
   pruneMissing,
   type HashStore,
 } from "../../src/hash-store";
+import { recordServed, getServed } from "../../src/served";
 import { HASH_STORE_VERSION } from "../../src/constants";
 import { initHasher, contentChecksum } from "../../src/hashline/hasher";
 import { splitLines } from "../../src/utils";
@@ -426,7 +427,7 @@ describe("hash-store - pruneMissing", () => {
     });
   });
 
-  it("removes undo entries for files that no longer exist", async () => {
+  it("keeps undo entries for files that no longer exist", async () => {
     await withTempHome(async () => {
       const store = await loadHashStore();
       upsertUndo(store, "/gone.ts", {
@@ -437,7 +438,7 @@ describe("hash-store - pruneMissing", () => {
         resultContent: "new",
       });
       await pruneMissing(store);
-      expect(getUndoEntry(store, "/gone.ts")).toBeUndefined();
+      expect(getUndoEntry(store, "/gone.ts")).toBeDefined();
     });
   });
 
@@ -652,7 +653,7 @@ describe("hash-store - schema versioning", () => {
     });
   });
 
-  it("invalidates all snapshots when the stored version differs", async () => {
+  it("invalidates snapshots, undo, and served records when the stored version differs", async () => {
     await withTempHome(async (home) => {
       const store = await loadHashStore();
       await put(store, "/p.ts", "x\n", ["XYZ"]);
@@ -663,6 +664,7 @@ describe("hash-store - schema versioning", () => {
         hashes: ["UVW"],
         resultContent: "new",
       });
+      recordServed(store, "/s.ts", ["SER"]);
       shutdownHashStore();
 
       const db = new DatabaseSync(sqlitePath(home), { defensive: false } as any);
@@ -672,6 +674,7 @@ describe("hash-store - schema versioning", () => {
       const reloaded = await loadHashStore();
       expect(getSnapshot(reloaded, "/p.ts", "x\n")).toBeUndefined();
       expect(getUndoEntry(reloaded, "/u.ts")).toBeUndefined();
+      expect(getServed(reloaded, "/s.ts")).toBeUndefined();
 
       const check = new DatabaseSync(sqlitePath(home), { defensive: false } as any);
       const row = check.prepare("SELECT value FROM meta WHERE key = 'version'").get() as { value?: string } | undefined;

@@ -254,6 +254,7 @@ function buildStore(
   if (versionRow && versionRow.value !== String(HASH_STORE_VERSION)) {
     db.exec("DELETE FROM snapshots");
     db.exec("DELETE FROM undo");
+    db.exec("DELETE FROM served");
   }
   db.prepare(
     "INSERT INTO meta (key, value) VALUES ('version', ?) " +
@@ -586,7 +587,6 @@ export async function pruneMissing(store: HashStore): Promise<void> {
     for (const path of missing) {
       store.stmts.deleteOne(path);
       snapshotCache.delete(path);
-      store.stmts.undoDelete(path);
       store.stmts.servedDelete(path);
     }
   });
