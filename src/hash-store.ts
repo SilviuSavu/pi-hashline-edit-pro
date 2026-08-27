@@ -67,14 +67,14 @@ interface Prepared {
   allPaths: (...params: SqlParams) => Record<string, unknown>[];
   allHashes: (...params: SqlParams) => Record<string, unknown>[];
   allServed: (...params: SqlParams) => Record<string, unknown>[];
-  deleteOne: (...params: SqlParams) => void;
-  upsert: (...params: SqlParams) => void;
-  undoUpsert: (...params: SqlParams) => void;
+  deleteOne: (...params: SqlParams) => Promise<void>;
+  upsert: (...params: SqlParams) => Promise<void>;
+  undoUpsert: (...params: SqlParams) => Promise<void>;
   undoGet: (...params: SqlParams) => Record<string, unknown> | undefined;
-  undoDelete: (...params: SqlParams) => void;
+  undoDelete: (...params: SqlParams) => Promise<void>;
   servedGet: (...params: SqlParams) => Record<string, unknown> | undefined;
-  servedUpsert: (...params: SqlParams) => void;
-  servedDelete: (...params: SqlParams) => void;
+  servedUpsert: (...params: SqlParams) => Promise<void>;
+  servedDelete: (...params: SqlParams) => Promise<void>;
 }
 
 export interface HashStore {
@@ -157,15 +157,14 @@ function isBusyError(error: unknown): boolean {
   return error instanceof Error && /busy|locked/i.test(error.message);
 }
 
-function sleepSync(ms: number): void {
-  const sab = new Int32Array(new SharedArrayBuffer(4));
-  Atomics.wait(sab, 0, 0, ms);
-}
-
 const BUSY_RETRIES = 3;
 const BUSY_RETRY_DELAY_MS = 100;
 
-function withBusyRetry<T>(fn: () => T): T {
+function sleepAsync(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withBusyRetry<T>(fn: () => T): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= BUSY_RETRIES; attempt++) {
     try {
@@ -173,21 +172,21 @@ function withBusyRetry<T>(fn: () => T): T {
     } catch (error) {
       lastError = error;
       if (!isBusyError(error) || attempt === BUSY_RETRIES) throw error;
-      sleepSync(BUSY_RETRY_DELAY_MS);
+      await sleepAsync(BUSY_RETRY_DELAY_MS);
     }
   }
   throw lastError;
 }
 
-function openDbWithBusyRetry(storePath: string): { db: RawDb; stmts: Prepared } {
+function openDbWithBusyRetry(storePath: string): Promise<{ db: RawDb; stmts: Prepared }> {
   return withBusyRetry(() => openDb(storePath));
 }
 
 function retriedWrite(
   stmt: { run(...params: SqlParams): unknown },
-): (...params: SqlParams) => void {
-  return (...params) => {
-    withBusyRetry(() => { stmt.run(...params); });
+): (...params: SqlParams) => Promise<void> {
+  return async (...params) => {
+    await withBusyRetry(() => { stmt.run(...params); });
   };
 }
 
@@ -341,19 +340,19 @@ async function openStore(storePath: string): Promise<HashStore> {
   let existed = existsSync(storePath);
   let opened: { db: RawDb; stmts: Prepared };
   try {
-    opened = openDbWithBusyRetry(storePath);
+    opened = await openDbWithBusyRetry(storePath);
   } catch (error) {
     if (!isCorruptionError(error)) throw error;
     console.error("Hash store failed to open, rebuilding:", error);
     await quarantineStore(storePath);
     existed = false;
-    opened = openDbWithBusyRetry(storePath);
+    opened = await openDbWithBusyRetry(storePath);
   }
   if (!isHealthy(opened.db)) {
     shutdownDb(opened.db);
     await quarantineStore(storePath);
     existed = false;
-    opened = openDbWithBusyRetry(storePath);
+    opened = await openDbWithBusyRetry(storePath);
   }
   const { db, stmts } = opened;
 
@@ -403,14 +402,14 @@ export function shutdownHashStore(): void {
   snapshotCache.clear();
 }
 
-function withStore(fn: () => void): void {
+async function withStore(fn: () => unknown): Promise<void> {
   if (!cachedDb) {
     throw new Error("Hash store is not open; transactional update aborted");
   }
-  withBusyRetry(() => {
+  await withBusyRetry(async () => {
     cachedDb!.db.exec("BEGIN IMMEDIATE");
     try {
-      fn();
+      await fn();
       cachedDb!.db.exec("COMMIT");
     } catch (e) {
       try { cachedDb!.db.exec("ROLLBACK"); } catch {}
@@ -463,7 +462,7 @@ async function migrateLegacy(db: RawDb): Promise<void> {
     ]);
   }
   if (rows.length > 0) {
-    withBusyRetry(() => {
+    await withBusyRetry(() => {
       db.exec("BEGIN IMMEDIATE");
       try {
         const stmt = db.prepare(
@@ -518,19 +517,19 @@ export function getSnapshot(
   return parsed;
 }
 
-export function upsertSnapshot(
+export async function upsertSnapshot(
   store: HashStore,
   path: string,
   checksum: string,
   lineCount: number,
   hashes: string[],
-): void {
-  store.stmts.upsert(path, checksum, lineCount, JSON.stringify(hashes), Date.now());
+): Promise<void> {
+  await store.stmts.upsert(path, checksum, lineCount, JSON.stringify(hashes), Date.now());
   cacheSnapshot(path, checksum, lineCount, hashes);
 }
 
-export function upsertUndo(store: HashStore, path: string, entry: UndoRecord): void {
-  store.stmts.undoUpsert(
+export async function upsertUndo(store: HashStore, path: string, entry: UndoRecord): Promise<void> {
+  await store.stmts.undoUpsert(
     path,
     entry.content,
     entry.bom,
@@ -555,8 +554,8 @@ export function getUndoEntry(store: HashStore, path: string): UndoRecord | undef
   };
 }
 
-export function deleteUndo(store: HashStore, path: string): void {
-  store.stmts.undoDelete(path);
+export async function deleteUndo(store: HashStore, path: string): Promise<void> {
+  await store.stmts.undoDelete(path);
 }
 
 const STAT_BATCH = 64;
@@ -592,11 +591,11 @@ export async function pruneMissing(store: HashStore): Promise<void> {
   const rows = store.stmts.allPaths() as { path: string }[];
   const missing = await statMissing(rows);
   if (missing.length === 0) return;
-  withStore(() => {
+  await withStore(async () => {
     for (const path of missing) {
-      store.stmts.deleteOne(path);
+      await store.stmts.deleteOne(path);
       snapshotCache.delete(path);
-      store.stmts.servedDelete(path);
+      await store.stmts.servedDelete(path);
     }
   });
 }

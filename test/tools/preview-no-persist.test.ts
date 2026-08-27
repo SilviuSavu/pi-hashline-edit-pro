@@ -18,7 +18,7 @@ describe("compPreview no-persist guarantee", () => {
       const hashes = await lineHashes(content, absolutePath);
 
       const storeBefore = await loadHashStore();
-      const beforeHashes = getSnapshot(storeBefore, absolutePath, content);
+      const beforeHashes = await getSnapshot(storeBefore, absolutePath, content);
       expect(beforeHashes).toBeDefined();
       expect(beforeHashes).toEqual(hashes);
       const bHash = hashes[1]!;
@@ -35,7 +35,7 @@ describe("compPreview no-persist guarantee", () => {
       expect(preview).toHaveProperty("diff");
 
       const storeAfter = await loadHashStore();
-      const afterHashes = getSnapshot(storeAfter, absolutePath, content);
+      const afterHashes = await getSnapshot(storeAfter, absolutePath, content);
       expect(afterHashes).toBeDefined();
       expect(afterHashes).toEqual(hashes);
     });
@@ -60,7 +60,7 @@ describe("compPreview no-persist guarantee", () => {
       );
 
       const store = await loadHashStore();
-      expect(getSnapshot(store, absolutePath, content)).toEqual(hashes);
+      expect(await getSnapshot(store, absolutePath, content)).toEqual(hashes);
     });
   });
 

@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config";
 export const mockIsolatedFiles = [
   "test/core/config-atomic.test.ts",
   "test/core/hash-store-open-errors.test.ts",
+  "test/core/hash-store-async-busy-retry.test.ts",
+  "test/core/hash-store-prune-strict-enoent.test.ts",
   "test/core/validation-access.test.ts",
   "test/tools/fs-write.cleanup.test.ts",
   "test/tools/fs-write-cleanup-on-error.test.ts",

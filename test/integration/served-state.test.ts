@@ -9,7 +9,7 @@ import { resolveTarget } from "../../src/fs-write";
 
 async function servedFor(cwd: string, name: string): Promise<Set<string> | undefined> {
   const store = await loadHashStore();
-  return getServed(store, await resolveTarget(toCwd(name, cwd)));
+  return await getServed(store, await resolveTarget(toCwd(name, cwd)));
 }
 
 function feedbackRows(message: string): string[] {

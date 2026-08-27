@@ -300,7 +300,7 @@ describe("undo_last_change", () => {
 
       const store = await loadHashStore();
       const absPath = join(cwd, "sample.ts");
-      const undoHashes = getSnapshot(store, absPath, "aaa\nbbb\nccc\n");
+      const undoHashes = await getSnapshot(store, absPath, "aaa\nbbb\nccc\n");
       expect(undoHashes).toBeDefined();
     });
   });
