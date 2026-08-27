@@ -125,8 +125,10 @@ export default function (pi: ExtensionAPI): void {
     if (metrics?.classification === "noop") return;
 
     const diff = (event.details as { diff?: string } | undefined)?.diff;
-    if (!diff) return;
-
+    // A whitespace-only change produces an empty diff but the tool still
+    // succeeded. Show a hint instead of returning silently so the agent
+    // knows the post-edit hook ran and the change was real (just not text).
+    const hasDiff = typeof diff === "string" && diff.length > 0;
     const rendered = (event.content ?? [])
       .filter(
         (entry): entry is { type: "text"; text: string } =>
@@ -135,11 +137,16 @@ export default function (pi: ExtensionAPI): void {
       .map((entry) => entry.text)
       .join("\n");
     const warnings = extractWarnings(rendered);
+    const hint = hasDiff
+      ? warnings
+        ? `${diff}\n\n${warnings}`
+        : diff
+      : "[post-edit] applied successfully; the diff is empty (whitespace-only change).";
     return {
       content: [
         {
           type: "text",
-          text: warnings ? `${diff}\n\n${warnings}` : diff,
+          text: hint,
         },
       ],
     };
