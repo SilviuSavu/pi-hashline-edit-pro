@@ -227,6 +227,18 @@ describe("applyEdit - edge cases (empty, single-line, no trailing newline)", () 
 		expect(() => applyEdit(content, edit)).toThrow(/^\[E_WOULD_EMPTY\]/);
 	});
 
+	it("allows clearing a whitespace-only single-line file with a replace", async () => {
+		const content = "   ";
+		const edit: HEdit = { hash_bounds: [await makeTag(content, 1, home.testPath), await makeTag(content, 1, home.testPath)], content_lines: [] };
+		expect(() => applyEdit(content, edit)).not.toThrow();
+	});
+
+	it("still rejects emptying a file that contains a non-whitespace line", async () => {
+		const content = "real\n   ";
+		const edit: HEdit = { hash_bounds: [await makeTag(content, 1, home.testPath), await makeTag(content, 2, home.testPath)], content_lines: [] };
+		expect(() => applyEdit(content, edit)).toThrow(/^\[E_WOULD_EMPTY\]/);
+	});
+
 	it("replaces a line in a file with no trailing newline", async () => {
 		const content = "aaa\nbbb\nccc";
 		const edit: HEdit = { hash_bounds: [await makeTag(content, 2, home.testPath), await makeTag(content, 2, home.testPath)], content_lines: ["BBB"] };
