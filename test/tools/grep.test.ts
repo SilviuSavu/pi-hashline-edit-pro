@@ -218,9 +218,30 @@ describe("grep tool", () => {
         undefined, undefined, ctx,
       );
       const text = getText(result);
-      expect(text).toContain("showing first 5 matches");
+      expect(text).toContain("hit the 5-match limit");
+      expect(text).toContain("limit=25");
       const rows = text.split("\n").filter((l) => /^[A-Za-z0-9]{3}│/.test(l));
       expect(rows).toHaveLength(5);
+      const metrics = (result.details as { metrics: { limit: { requested: number; returned: number; hit: boolean } } }).metrics;
+      expect(metrics.limit.requested).toBe(5);
+      expect(metrics.limit.returned).toBe(5);
+      expect(metrics.limit.hit).toBe(true);
+    });
+  });
+
+  it("does not emit the limit note when the search meets the limit exactly", async () => {
+    await withTempFile("sample.ts", Array.from({ length: 5 }, (_, i) => `line ${i}`).join("\n") + "\n", async ({ cwd }) => {
+      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const grepTool = getTool("grep");
+      const result = await grepTool.execute(
+        "g1",
+        { pattern: "^line", path: "sample.ts", limit: 5 },
+        undefined, undefined, ctx,
+      );
+      const text = getText(result);
+      expect(text).not.toContain("hit the 5-match limit");
+      const metrics = (result.details as { metrics: { limit: { hit: boolean } } }).metrics;
+      expect(metrics.limit.hit).toBe(false);
     });
   });
 
