@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { lineHashes } from "../../src/hashline";
@@ -104,5 +104,31 @@ describe("replace - missing path resolution", () => {
       expect(result.details?.diff).toContain("BBB");
       expect(await readFile(path, "utf-8")).toBe("aaa\nBBB\nccc\n");
     });
+  });
+
+  it("logs and surfaces parseHashRef errors when a missing path can't be resolved", async () => {
+    const consoleErr = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await withTempFile("sample.ts", "aaa\nbbb\n", async ({ cwd }) => {
+        const { ctx, editTool } = setupIntegrationTest(cwd);
+        // Malformed hash refs: the path resolver should log the parse error
+        // instead of silently returning undefined and surfacing a confusing
+        // generic "requires non-empty path" later.
+        const promise = editTool.execute(
+          "e1",
+          { remove_from: "not-a-hash", remove_to: "also-bad", replacement_lines: ["X"] },
+          undefined,
+          undefined,
+          ctx,
+        );
+        await expect(promise).rejects.toThrow(/non-empty "path" string/);
+        const first = String(consoleErr.mock.calls[0]?.[0] ?? "");
+        expect(first).toContain("resolveMissingPath");
+        expect(first).toContain("not-a-hash");
+
+      });
+    } finally {
+      consoleErr.mockRestore();
+    }
   });
 });
