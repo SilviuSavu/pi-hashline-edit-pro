@@ -11,8 +11,9 @@ import { normReq } from "./replace-normalize";
 import { recordServedSafe } from "./served";
 import { abortIf, errCode, isRec, makePrepareArguments, rejectUnknownFields, visLines } from "./utils";
 
-const GREP_KS = new Set(["pattern", "path", "glob", "context", "ignoreCase", "literal", "limit"]);
+const GREP_KS = new Set(["pattern", "path", "glob", "context", "ignoreCase", "literal", "regex", "limit"]);
 const SKIP_DIRS = new Set(["node_modules", ".git", ".tmp", "coverage"]);
+const REGEX_METACHARS = /[.*+?^${}()|[\]\\]/;
 const MAX_SCAN_FILES = 4000;
 const MAX_SHOWN_ROWS = 2000;
 
@@ -23,9 +24,9 @@ export interface GrepReq {
   context?: number;
   ignoreCase?: boolean;
   literal?: boolean;
+  regex?: boolean;
   limit?: number;
 }
-
 export function assertGrepReq(request: unknown): asserts request is GrepReq {
   if (!isRec(request)) {
     throw new Error("[E_BAD_SHAPE] Grep request must be an object.");
@@ -39,6 +40,12 @@ export function assertGrepReq(request: unknown): asserts request is GrepReq {
   }
   if (request.limit !== undefined && (typeof request.limit !== "number" || !Number.isInteger(request.limit) || request.limit < 1)) {
     throw new Error('[E_BAD_SHAPE] Grep request field "limit" must be a positive integer.');
+  }
+  if (request.regex !== undefined && typeof request.regex !== "boolean") {
+    throw new Error('[E_BAD_SHAPE] Grep request field "regex" must be a boolean.');
+  }
+  if (request.regex === true && request.literal === true) {
+    throw new Error('[E_BAD_SHAPE] Grep request cannot have both "regex: true" and "literal: true".');
   }
 }
 
@@ -192,7 +199,7 @@ async function searchFile(
 const grepToolSchema = Type.Object(
   {
     pattern: Type.String({
-      description: "Search pattern (regex or literal string)",
+      description: "Search pattern. Defaults to literal text; pass regex: true to interpret as a regex.",
     }),
     path: Type.Optional(
       Type.String({
@@ -211,7 +218,12 @@ const grepToolSchema = Type.Object(
     ),
     literal: Type.Optional(
       Type.Boolean({
-        description: "Treat pattern as literal string instead of regex (default: false)",
+        description: "Treat pattern as literal string (default; equivalent to omitting both literal and regex).",
+      }),
+    ),
+    regex: Type.Optional(
+      Type.Boolean({
+        description: "If true, interpret pattern as a regular expression (default: false).",
       }),
     ),
     context: Type.Optional(
@@ -244,7 +256,11 @@ export function regGrep(pi: ExtensionAPI): void {
       const canonical = normReq(params);
       assertGrepReq(canonical);
       const req = canonical;
-      const regex = buildRegex(req.pattern, req.literal === true, req.ignoreCase === true);
+      // Default is literal; opt into regex via regex: true. literal: true is kept
+      // for backward compatibility and is equivalent to leaving both unset.
+      const useRegex = req.regex === true;
+      const useLiteral = req.literal === true || !useRegex;
+      const regex = buildRegex(req.pattern, useLiteral, req.ignoreCase === true);
       const context = req.context ?? 0;
       const limit = req.limit ?? 100;
       const globRegex = req.glob === undefined ? undefined : globToRegex(req.glob);
@@ -306,8 +322,14 @@ export function regGrep(pi: ExtensionAPI): void {
       if (rowTruncated) notes.push(`[grep: output truncated at ${MAX_SHOWN_ROWS} rows; refine the pattern to see more.]`);
       if (limitTruncated) notes.push(`[grep: showing first ${limit} matches; increase limit to see more.]`);
       if (state.stopped) notes.push(`[grep: scan cap of ${MAX_SCAN_FILES} files reached; results may be incomplete.]`);
+      // If the pattern was passed with regex metacharacters but produced no
+      // matches, surface a hint that the caller probably meant a literal.
+      if (useRegex && REGEX_METACHARS.test(req.pattern) && hits.length === 0) {
+        notes.push(`[W_LITERAL_LIKELY] pattern contains regex metacharacters and returned 0 matches; try omitting "regex: true" (the default is literal).`);
+      }
       const truncated = limitTruncated || rowTruncated;
-      const text = blocks.length > 0 ? `${blocks}${notes.length > 0 ? `\n${notes.join("\n")}` : ""}` : "No matches found.";
+      const body = blocks.length > 0 ? blocks : "No matches found.";
+      const text = notes.length > 0 ? `${body}\n${notes.join("\n")}` : body;
       return {
         content: [{ type: "text", text }],
         details: {
