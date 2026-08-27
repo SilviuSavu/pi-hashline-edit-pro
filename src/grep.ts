@@ -52,14 +52,21 @@ function buildRegex(pattern: string, literal: boolean, ignoreCase: boolean): Reg
 }
 
 function globToRegex(glob: string): RegExp {
+  // Tolerate a leading "/" the way agents often write globs:
+  //   "/src/*.ts" is treated as "src/*.ts" - the same glob without the
+  //   absolute-style prefix. Search callers must also test the regex
+  //   against both globRoot-relative and cwd_relative paths so the bare
+  //   slash does not silently filter out every file (see searchFile)
+  let normalized = glob;
+  if (normalized.startsWith("/")) normalized = normalized.slice(1);
   let source = "";
   let i = 0;
-  while (i < glob.length) {
-    const ch = glob[i]!;
+  while (i < normalized.length) {
+    const ch = normalized[i]!;
     if (ch === "*") {
-      if (glob[i + 1] === "*") {
+      if (normalized[i + 1] === "*") {
         i += 2;
-        if (glob[i] === "/") {
+        if (normalized[i] === "/") {
           i += 1;
           source += "(?:.*\\/)?";
         } else {
@@ -142,8 +149,15 @@ async function searchFile(
 ): Promise<FileHit | undefined> {
   const displayPath = relative(cwd, absPath).replace(/\\/g, "/");
   if (globRegex) {
-    const globPath = relative(globRoot, absPath).replace(/\\/g, "/");
-    if (!globRegex.test(globPath)) return undefined;
+    // Test against BOTH the globRoot-relative path (when glob is given as
+    // relative to the search root) and the cwd-relative path (when glob is
+    // given as absolute-style, e.g. "/src/*.ts", or relative to cwd)
+    // This makes leading-slash globs work without forcing agents to compute
+    // relative paths
+    const candidates = [relative(globRoot, absPath), relative(cwd, absPath)].map((p) =>
+      p.replace(/\\/g, "/"),
+    );
+    if (!candidates.some((p) => globRegex.test(p))) return undefined;
   }
   let file;
   try {
