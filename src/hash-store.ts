@@ -570,8 +570,14 @@ async function statMissing(rows: { path: string }[]): Promise<string[]> {
         try {
           await stat(row.path);
           return undefined;
-        } catch {
-          return row.path;
+        } catch (error: unknown) {
+          if (errCode(error) === "ENOENT") return row.path;
+          console.error(
+            "Hash store prune: skipping path due to stat error:",
+            row.path,
+            error,
+          );
+          return undefined;
         }
       }),
     );
