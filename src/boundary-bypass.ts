@@ -40,6 +40,10 @@ export function consumeBoundaryBypass(absolutePath: string, payload: string): bo
   return false;
 }
 
+export function peekBoundaryBypass(absolutePath: string, payload: string): boolean {
+  return boundaryBypassTracker.get(absolutePath) === payload;
+}
+
 export function clearBoundaryBypass(absolutePath: string): void {
   boundaryBypassTracker.delete(absolutePath);
 }
