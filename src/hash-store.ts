@@ -104,21 +104,34 @@ export function isValidHashList(value: unknown): value is string[] {
   return true;
 }
 
-export function parseHashList(raw: string, onInvalid: () => void): string[] | undefined {
+export function parseHashList(
+  raw: string,
+  onInvalid: () => void,
+  context?: string,
+): string[] | undefined {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    // Silent JSON corruption used to delete served records on every read.
+    // Log the parse error so the user can diagnose the corruption.
+    console.error(
+      `[parseHashList]${context ? ` ${context}:` : ""} failed to parse stored hashes JSON:`,
+      error,
+    );
     onInvalid();
     return undefined;
   }
   if (!isValidHashList(parsed)) {
+    console.error(
+      `[parseHashList]${context ? ` ${context}:` : ""} stored hashes did not pass validation:`,
+      parsed,
+    );
     onInvalid();
     return undefined;
   }
   return parsed;
 }
-
 export function parseStoredHashes(
   row: Record<string, unknown> | undefined,
   onInvalid: () => void,
