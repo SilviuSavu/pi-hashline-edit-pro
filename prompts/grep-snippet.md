@@ -1,1 +1,1 @@
-Search file contents; matching lines carry HASH│ anchors usable in replace/insert without a re-read
+Search file contents; matching lines carry HASH│ anchors usable in replace/insert without a re-read. Defaults to skipping node_modules, .git, .tmp, coverage. Pass `skip: ["..."]` to override the skip list or `no_skip: true` to scan everywhere (slow).

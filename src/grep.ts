@@ -11,7 +11,7 @@ import { normReq } from "./replace-normalize";
 import { recordServedSafe } from "./served";
 import { abortIf, errCode, isRec, makePrepareArguments, rejectUnknownFields, visLines } from "./utils";
 
-const GREP_KS = new Set(["pattern", "path", "glob", "context", "ignoreCase", "literal", "limit"]);
+const GREP_KS = new Set(["pattern", "path", "glob", "context", "ignoreCase", "literal", "limit", "skip", "no_skip"]);
 const SKIP_DIRS = new Set(["node_modules", ".git", ".tmp", "coverage"]);
 const MAX_SCAN_FILES = 4000;
 const MAX_SHOWN_ROWS = 2000;
@@ -24,6 +24,8 @@ export interface GrepReq {
   ignoreCase?: boolean;
   literal?: boolean;
   limit?: number;
+  skip?: string[];
+  no_skip?: boolean;
 }
 
 export function assertGrepReq(request: unknown): asserts request is GrepReq {
@@ -36,6 +38,12 @@ export function assertGrepReq(request: unknown): asserts request is GrepReq {
   }
   if (request.context !== undefined && (typeof request.context !== "number" || !Number.isInteger(request.context) || request.context < 0)) {
     throw new Error('[E_BAD_SHAPE] Grep request field "context" must be a non-negative integer.');
+  }
+  if (request.no_skip !== undefined && typeof request.no_skip !== "boolean") {
+    throw new Error('[E_BAD_SHAPE] Grep request field "no_skip" must be a boolean.');
+  }
+  if (request.skip !== undefined && (!Array.isArray(request.skip) || request.skip.some((s) => typeof s !== "string"))) {
+    throw new Error('[E_BAD_SHAPE] Grep request field "skip" must be a string[].');
   }
   if (request.limit !== undefined && (typeof request.limit !== "number" || !Number.isInteger(request.limit) || request.limit < 1)) {
     throw new Error('[E_BAD_SHAPE] Grep request field "limit" must be a positive integer.');
@@ -102,6 +110,7 @@ interface ScanState {
 async function walkFiles(
   root: string,
   state: ScanState,
+  skipDirs: Set<string>,
   onFile: (absPath: string) => Promise<void>,
 ): Promise<void> {
   const queue: string[] = [root];
@@ -117,7 +126,7 @@ async function walkFiles(
       if (state.stopped) break;
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (SKIP_DIRS.has(entry.name)) continue;
+        if (skipDirs.has(entry.name)) continue;
         queue.push(full);
       } else if (entry.isFile()) {
         state.scanned += 1;
@@ -226,6 +235,16 @@ const grepToolSchema = Type.Object(
         description: "Maximum number of matches to return (default: 100)",
       }),
     ),
+    skip: Type.Optional(
+      Type.Array(Type.String(), {
+        description: 'Directory names to skip during recursive scan (replaces the default node_modules/.git/.tmp/coverage list). E.g. ["node_modules", "dist"].',
+      }),
+    ),
+    no_skip: Type.Optional(
+      Type.Boolean({
+        description: "If true, scan into every directory including node_modules, .git, etc. Slow and may time out.",
+      }),
+    ),
   },
   { additionalProperties: false },
 );
@@ -265,7 +284,8 @@ export function regGrep(pi: ExtensionAPI): void {
       if (baseStat.isFile()) {
         files.push(base);
       } else {
-        await walkFiles(base, state, async (absPath) => {
+        const skipDirs = req.no_skip === true ? new Set<string>() : req.skip && req.skip.length > 0 ? new Set(req.skip) : SKIP_DIRS;
+        await walkFiles(base, state, skipDirs, async (absPath) => {
           files.push(absPath);
         });
       }
