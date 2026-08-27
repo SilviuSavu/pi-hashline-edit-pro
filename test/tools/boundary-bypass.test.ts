@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { lineHashes } from "../../src/hashline";
 import { compPreview } from "../../src/replace";
+import { consumeBoundaryBypass, noopPayloadKey, peekBoundaryBypass } from "../../src/boundary-bypass";
+
 import {
   withTempFile,
   setupIntegrationTest,
@@ -224,6 +226,79 @@ describe("boundary dedup noop bypass", () => {
       expect(getText(resend)).toContain("No changes made");
       expect(getText(resend)).not.toContain("[E_BOUNDARY_BYPASS]");
       expect(await readFile(path, "utf-8")).toBe("aaa\nbbb\nccc\n");
+    });
+  });
+
+  it("preview returns the diff when a boundary bypass is pending for the same payload", async () => {
+    await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd, path }) => {
+      const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
+      const hashes = await readSample(ctx, readTool);
+      const payload = cutPayload(hashes);
+
+      const first = await editTool.execute("e1", payload, undefined, undefined, ctx);
+      expect(first.details.classification).toBe("noop");
+      expect(getText(first)).toContain("No changes made");
+
+      const preview = await compPreview(payload, cwd);
+      expect("diff" in preview).toBe(true);
+      if ("diff" in preview) {
+        expect(preview.diff).toContain("bbb");
+        expect(preview.diff).toContain("ccc");
+      }
+
+      const abs = join(cwd, "sample.ts");
+      const peek = await peekBoundaryBypass(abs, noopPayloadKey(abs, payload.remove_from, payload.remove_to, payload.replacement_lines));
+      expect(peek).toBe(true);
+
+      const second = await editTool.execute("e2", payload, undefined, undefined, ctx);
+      expect(getText(second)).toContain("Successfully replaced");
+      expect(await readFile(path, "utf-8")).toBe("aaa\nbbb\nccc\nccc\n");
+    });
+  });
+
+  it("preview consumes nothing from the bypass tracker", async () => {
+    await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
+      const { ctx, readTool, editTool } = setupIntegrationTest(cwd);
+      const hashes = await readSample(ctx, readTool);
+      const payload = cutPayload(hashes);
+      await editTool.execute("e1", payload, undefined, undefined, ctx);
+
+      const abs = join(cwd, "sample.ts");
+      const key = noopPayloadKey(abs, payload.remove_from, payload.remove_to, payload.replacement_lines);
+      expect(await peekBoundaryBypass(abs, key)).toBe(true);
+
+      await compPreview(payload, cwd);
+      await compPreview(payload, cwd);
+
+      expect(await peekBoundaryBypass(abs, key)).toBe(true);
+      expect(await consumeBoundaryBypass(abs, key)).toBe(true);
+      expect(await peekBoundaryBypass(abs, key)).toBe(false);
+    });
+  });
+
+  it("preview still returns 'no changes' when no bypass is pending", async () => {
+    await withTempFile("sample.ts", "aaa\nbbb\nccc\n", async ({ cwd }) => {
+      const { ctx, readTool } = setupIntegrationTest(cwd);
+      await readSample(ctx, readTool);
+
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const hashes = await lineHashes("aaa\nbbb\nccc\n");
+        const payload = {
+          path: "sample.ts",
+          remove_from: hashes[1]!,
+          remove_to: hashes[1]!,
+          replacement_lines: ["bbb"],
+        };
+
+        const preview = await compPreview(payload, cwd);
+        expect("error" in preview).toBe(true);
+        if ("error" in preview) {
+          expect(preview.error).toContain("No changes made");
+        }
+      } finally {
+        errSpy.mockRestore();
+      }
     });
   });
 });

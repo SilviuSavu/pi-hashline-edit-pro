@@ -34,7 +34,7 @@ import {
 import { loadP, loadGuide } from "./prompts";
 import { loadHashStore, findSnapshotPaths, findServedPaths, type HashStore } from "./hash-store";
 import { getServed, recordServedSafe } from "./served";
-import { noopPayloadKey, markBoundaryNoop, consumeBoundaryBypass, clearBoundaryBypass } from "./boundary-bypass";
+import { noopPayloadKey, markBoundaryNoop, consumeBoundaryBypass, peekBoundaryBypass, clearBoundaryBypass } from "./boundary-bypass";
 import { commitEdit } from "./commit";
 
 const replacementLinesSchema = Type.Array(
@@ -302,10 +302,23 @@ export async function compPreview(
   try {
     const normalized = normReq(request);
     assertReq(normalized);
+    let skipBoundaryDedup = false;
+    try {
+      const absolutePath = toCwd(normalized.path, cwd);
+      const mutationTargetPath = await resolveTarget(absolutePath);
+      const noopPayload = noopPayloadKey(
+        mutationTargetPath,
+        normalized.remove_from,
+        normalized.remove_to,
+        normalized.replacement_lines,
+      );
+      skipBoundaryDedup = peekBoundaryBypass(mutationTargetPath, noopPayload);
+    } catch {
+    }
     const { path, originalNormalized, result, resultHashes, originalHashes } = await execPipeline(
       normalized,
       cwd,
-      { accessMode: constants.R_OK, noPersist: true },
+      { accessMode: constants.R_OK, noPersist: true, skipBoundaryDedup },
     );
     if (originalNormalized === result) {
       return {
