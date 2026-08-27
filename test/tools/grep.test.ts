@@ -284,6 +284,30 @@ describe("grep tool", () => {
     });
   });
 
+  it("surfaces skipped-file diagnostics and metrics when a too-large file is in the scan", async () => {
+    await withTempDir("grep-skip-", async (dir) => {
+      await writeFile(join(dir, "small.ts"), "needle here\n", "utf-8");
+      await writeFile(
+        join(dir, "huge.ts"),
+        Array.from({ length: 240000 }, (_, i) => `line ${i}`).join("\n"),
+        "utf-8",
+      );
+
+      const { ctx, getTool } = setupIntegrationTest(dir);
+      const grepTool = getTool("grep");
+      const result = await grepTool.execute(
+        "g1",
+        { pattern: "needle" },
+        undefined, undefined, ctx,
+      );
+      const text = getText(result);
+      expect(text).toContain("│needle here");
+      expect(text).toContain("skipped (over the 238328-line limit)");
+      const metrics = (result.details as { metrics: { skipped: { tooLarge: number; permission: number; unreadableDir: number } } }).metrics;
+      expect(metrics.skipped.tooLarge).toBeGreaterThanOrEqual(1);
+      expect(metrics.skipped.permission).toBe(0);
+    });
+  });
   it("reports no matches", async () => {
     await withTempFile("sample.ts", "alpha\nbeta\n", async ({ cwd }) => {
       const { ctx, getTool } = setupIntegrationTest(cwd);

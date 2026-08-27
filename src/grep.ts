@@ -78,12 +78,19 @@ function globToRegex(glob: string): RegExp {
   return new RegExp(`^${source}$`);
 }
 
+// Classifies a load-time error so we can count each silent-skip category separately.
+function classifyLoadError(error: unknown): "tooLarge" | "permission" | "other" {
+  if (error instanceof Error && error.message.startsWith("[E_FILE_TOO_LARGE]")) return "tooLarge";
+  const code = errCode(error);
+  if (code === "EACCES" || code === "EPERM" || code === "ELOOP") return "permission";
+  return "other";
+}
+
 function isSkipableLoadError(error: unknown): boolean {
   const code = errCode(error);
   if (code === "EACCES" || code === "EPERM" || code === "ENOENT" || code === "ELOOP") return true;
   return error instanceof Error && error.message.startsWith("[E_FILE_TOO_LARGE]");
 }
-
 interface FileHit {
   path: string;
   displayPath: string;
@@ -94,9 +101,16 @@ interface FileHit {
   totalMatchCount: number;
 }
 
+interface SkipStats {
+  tooLarge: number;
+  permission: number;
+  unreadableDir: number;
+}
+
 interface ScanState {
   scanned: number;
   stopped: boolean;
+  skipped: SkipStats;
 }
 
 async function walkFiles(
@@ -110,7 +124,10 @@ async function walkFiles(
     let entries;
     try {
       entries = await readdir(dir, { withFileTypes: true });
-    } catch {
+    } catch (error) {
+      // ENOENT races (a directory was removed mid-walk) are harmless; anything
+      // else means the agent lost visibility into this directory and should be told.
+      if (errCode(error) !== "ENOENT") state.skipped.unreadableDir += 1;
       continue;
     }
     for (const entry of entries) {
@@ -139,6 +156,7 @@ async function searchFile(
   globRegex: RegExp | undefined,
   context: number,
   maxMatches: number,
+  skip: SkipStats,
 ): Promise<FileHit | undefined> {
   const displayPath = relative(cwd, absPath).replace(/\\/g, "/");
   if (globRegex) {
@@ -149,7 +167,12 @@ async function searchFile(
   try {
     file = await loadFileKindAndText(absPath, { maxLines: MAX_HASH_LINES, displayPath });
   } catch (error) {
-    if (isSkipableLoadError(error)) return undefined;
+    if (isSkipableLoadError(error)) {
+      const kind = classifyLoadError(error);
+      if (kind === "tooLarge") skip.tooLarge += 1;
+      else if (kind === "permission") skip.permission += 1;
+      return undefined;
+    }
     throw error;
   }
   if (file.kind !== "text") return undefined;
@@ -157,7 +180,12 @@ async function searchFile(
   try {
     norm = await readNormFile(absPath, cwd, { maxLines: MAX_HASH_LINES, preloadedFile: file, noPersist: true });
   } catch (error) {
-    if (isSkipableLoadError(error)) return undefined;
+    if (isSkipableLoadError(error)) {
+      const kind = classifyLoadError(error);
+      if (kind === "tooLarge") skip.tooLarge += 1;
+      else if (kind === "permission") skip.permission += 1;
+      return undefined;
+    }
     throw error;
   }
   const lines = visLines(norm.normalized);
@@ -260,7 +288,11 @@ export function regGrep(pi: ExtensionAPI): void {
         throw new Error(`[E_ACCESS] Cannot access path: ${req.path ?? ctx.cwd}`);
       }
       const globRoot = baseStat.isFile() ? dirname(base) : base;
-      const state: ScanState = { scanned: 0, stopped: false };
+      const state: ScanState = {
+        scanned: 0,
+        stopped: false,
+        skipped: { tooLarge: 0, permission: 0, unreadableDir: 0 },
+      };
       const files: string[] = [];
       if (baseStat.isFile()) {
         files.push(base);
@@ -281,7 +313,7 @@ export function regGrep(pi: ExtensionAPI): void {
           limitTruncated = true;
           break;
         }
-        const hit = await searchFile(absPath, globRoot, ctx.cwd, regex, globRegex, context, remaining);
+        const hit = await searchFile(absPath, globRoot, ctx.cwd, regex, globRegex, context, remaining, state.skipped);
         if (!hit) continue;
         const rowBudget = MAX_SHOWN_ROWS - rowCount;
         if (rowBudget <= 0) {
@@ -306,6 +338,9 @@ export function regGrep(pi: ExtensionAPI): void {
       if (rowTruncated) notes.push(`[grep: output truncated at ${MAX_SHOWN_ROWS} rows; refine the pattern to see more.]`);
       if (limitTruncated) notes.push(`[grep: showing first ${limit} matches; increase limit to see more.]`);
       if (state.stopped) notes.push(`[grep: scan cap of ${MAX_SCAN_FILES} files reached; results may be incomplete.]`);
+      if (state.skipped.tooLarge > 0) notes.push(`[grep: ${state.skipped.tooLarge} file(s) skipped (over the ${MAX_HASH_LINES}-line limit); refine path or raise limits.]`);
+      if (state.skipped.permission > 0) notes.push(`[grep: ${state.skipped.permission} file(s) skipped (EACCES/EPERM); check permissions.]`);
+      if (state.skipped.unreadableDir > 0) notes.push(`[grep: ${state.skipped.unreadableDir} directory(ies) unreadable.]`);
       const truncated = limitTruncated || rowTruncated;
       const text = blocks.length > 0 ? `${blocks}${notes.length > 0 ? `\n${notes.join("\n")}` : ""}` : "No matches found.";
       return {
@@ -315,6 +350,7 @@ export function regGrep(pi: ExtensionAPI): void {
             matches,
             files: hits.length,
             truncated: truncated || state.stopped,
+            skipped: { ...state.skipped },
           },
         },
       };
