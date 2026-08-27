@@ -12,20 +12,22 @@ export function servedHashesFromDiff(diff: string): string[] {
   return hashes;
 }
 
-export function getServed(store: HashStore, path: string): Set<string> | undefined {
+export async function getServed(store: HashStore, path: string): Promise<Set<string> | undefined> {
   const row = store.stmts.servedGet(path);
-  const parsed = parseStoredHashes(row, () => store.stmts.servedDelete(path));
+  const parsed = parseStoredHashes(row, () => {
+    void store.stmts.servedDelete(path);
+  });
   if (!parsed) return undefined;
   return new Set(parsed);
 }
 
-export function recordServed(
+export async function recordServed(
   store: HashStore,
   path: string,
   hashes: string[],
   scope?: ReadonlySet<string>,
-): void {
-  const existing = getServed(store, path);
+): Promise<void> {
+  const existing = await getServed(store, path);
   if (!existing && hashes.length === 0) return;
   const set = existing ?? new Set<string>();
   let changed = false;
@@ -44,20 +46,20 @@ export function recordServed(
     }
   }
   if (!changed) return;
-  store.stmts.servedUpsert(path, JSON.stringify([...set]), Date.now());
+  await store.stmts.servedUpsert(path, JSON.stringify([...set]), Date.now());
 }
 
-export function recordServedDiff(
+export async function recordServedDiff(
   store: HashStore,
   path: string,
   diff: string,
   scope?: ReadonlySet<string>,
-): void {
-  recordServed(store, path, servedHashesFromDiff(diff), scope);
+): Promise<void> {
+  await recordServed(store, path, servedHashesFromDiff(diff), scope);
 }
 
-export function clearServed(store: HashStore, path: string): void {
-  store.stmts.servedDelete(path);
+export async function clearServed(store: HashStore, path: string): Promise<void> {
+  await store.stmts.servedDelete(path);
 }
 
 export async function recordServedSafe(
@@ -69,7 +71,7 @@ export async function recordServedSafe(
   if (hashes.length === 0 && !scope) return;
   try {
     const store = await loadHashStore();
-    recordServed(store, path, hashes, scope);
+    await recordServed(store, path, hashes, scope);
   } catch (error) {
     console.error(`Failed to record served state (${context}):`, error);
   }

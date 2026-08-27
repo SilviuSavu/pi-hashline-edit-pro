@@ -28,7 +28,7 @@ export async function saveUndo(
   try {
     const store = await loadHashStore();
     previous = getUndoEntry(store, path);
-    upsertUndo(store, path, {
+    await upsertUndo(store, path, {
       content: entry.content,
       bom: entry.bom,
       ending: entry.originalEnding,
@@ -44,8 +44,8 @@ export async function saveUndo(
     restore: async () => {
       try {
         const store = await loadHashStore();
-        if (previous) upsertUndo(store, path, previous);
-        else deleteUndo(store, path);
+        if (previous) await upsertUndo(store, path, previous);
+        else await deleteUndo(store, path);
       } catch (error) {
         console.error("Failed to restore previous undo entry:", error);
       }
@@ -79,7 +79,7 @@ export async function getUndo(path: string): Promise<UndoEntry | undefined> {
 export async function clearUndo(path: string): Promise<void> {
   try {
     const store = await loadHashStore();
-    deleteUndo(store, path);
+    await deleteUndo(store, path);
   } catch (error) {
     console.error("Failed to clear undo entry:", error);
   }
@@ -157,8 +157,8 @@ export function regUndo(pi: ExtensionAPI): void {
 
         try {
           const store = await loadHashStore();
-          upsertSnapshot(store, mutationTargetPath, contentChecksum(undo.content), splitLines(undo.content).length, undo.hashes);
-          recordServedDiff(store, mutationTargetPath, undoDiff, new Set(undo.hashes));
+          await upsertSnapshot(store, mutationTargetPath, contentChecksum(undo.content), splitLines(undo.content).length, undo.hashes);
+          await recordServedDiff(store, mutationTargetPath, undoDiff, new Set(undo.hashes));
         } catch (error) {
           console.error("Failed to restore hash store snapshot after undo:", error);
         }

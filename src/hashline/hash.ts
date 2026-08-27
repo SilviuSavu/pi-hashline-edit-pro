@@ -146,7 +146,7 @@ export async function lineHashes(
     );
     if (persist !== false) {
       try {
-        upsertSnapshot(hashStore, path, contentChecksum(content), splitLines(content).length, newHashes);
+        await upsertSnapshot(hashStore, path, contentChecksum(content), splitLines(content).length, newHashes);
       } catch (error) {
         console.error("Failed to persist hash snapshot:", error);
       }

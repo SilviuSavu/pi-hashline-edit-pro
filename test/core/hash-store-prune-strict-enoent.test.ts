@@ -56,7 +56,7 @@ describe("hash-store - pruneMissing stat() error handling", () => {
     shutdownHashStore();
     const store = await loadHashStore();
     const checksum = contentChecksum("keep\n");
-    store.stmts.upsert(filePath, checksum, splitLines("keep\n").length, JSON.stringify(["KEP"]), Date.now());
+    await store.stmts.upsert(filePath, checksum, splitLines("keep\n").length, JSON.stringify(["KEP"]), Date.now());
     recordServed(store, filePath, ["KEP"]);
 
     state.statErrors.set(filePath, eacces());
@@ -69,8 +69,8 @@ describe("hash-store - pruneMissing stat() error handling", () => {
       state.statErrors.clear();
     }
 
-    expect(getSnapshot(store, filePath, "keep\n")).toEqual(["KEP"]);
-    expect(getServed(store, filePath)).toEqual(new Set(["KEP"]));
+    expect(await getSnapshot(store, filePath, "keep\n")).toEqual(["KEP"]);
+    expect(await getServed(store, filePath)).toEqual(new Set(["KEP"]));
   });
 
   it("keeps snapshots and served records when stat() fails with EPERM", async () => {
@@ -86,7 +86,7 @@ describe("hash-store - pruneMissing stat() error handling", () => {
     shutdownHashStore();
     const store = await loadHashStore();
     const checksum = contentChecksum("keep\n");
-    store.stmts.upsert(filePath, checksum, splitLines("keep\n").length, JSON.stringify(["KEP"]), Date.now());
+    await store.stmts.upsert(filePath, checksum, splitLines("keep\n").length, JSON.stringify(["KEP"]), Date.now());
     recordServed(store, filePath, ["KEP"]);
 
     state.statErrors.set(
@@ -102,8 +102,8 @@ describe("hash-store - pruneMissing stat() error handling", () => {
       state.statErrors.clear();
     }
 
-    expect(getSnapshot(store, filePath, "keep\n")).toEqual(["KEP"]);
-    expect(getServed(store, filePath)).toEqual(new Set(["KEP"]));
+    expect(await getSnapshot(store, filePath, "keep\n")).toEqual(["KEP"]);
+    expect(await getServed(store, filePath)).toEqual(new Set(["KEP"]));
   });
 
   it("still prunes when stat() returns ENOENT (existing behavior)", async () => {
@@ -113,13 +113,13 @@ describe("hash-store - pruneMissing stat() error handling", () => {
 
     shutdownHashStore();
     const store = await loadHashStore();
-    store.stmts.upsert("/definitely-gone.ts", "checksum", 1, JSON.stringify(["GON"]), Date.now());
+    await store.stmts.upsert("/definitely-gone.ts", "checksum", 1, JSON.stringify(["GON"]), Date.now());
     recordServed(store, "/definitely-gone.ts", ["GON"]);
 
     await pruneMissing(store);
 
-    expect(getSnapshot(store, "/definitely-gone.ts", "x")).toBeUndefined();
-    expect(getServed(store, "/definitely-gone.ts")).toBeUndefined();
+    expect(await getSnapshot(store, "/definitely-gone.ts", "x")).toBeUndefined();
+    expect(await getServed(store, "/definitely-gone.ts")).toBeUndefined();
   });
 
   it("does not delete the SQLite snapshot row on non-ENOENT stat failure", async () => {
@@ -134,7 +134,7 @@ describe("hash-store - pruneMissing stat() error handling", () => {
     shutdownHashStore();
     const store = await loadHashStore();
     const checksum = contentChecksum("keep\n");
-    store.stmts.upsert(filePath, checksum, splitLines("keep\n").length, JSON.stringify(["ROW"]), Date.now());
+    await store.stmts.upsert(filePath, checksum, splitLines("keep\n").length, JSON.stringify(["ROW"]), Date.now());
 
     state.statErrors.set(filePath, eacces());
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -145,6 +145,6 @@ describe("hash-store - pruneMissing stat() error handling", () => {
       state.statErrors.clear();
     }
 
-    expect(getSnapshot(store, filePath, "keep\n")).toEqual(["ROW"]);
+    expect(await getSnapshot(store, filePath, "keep\n")).toEqual(["ROW"]);
   });
 });

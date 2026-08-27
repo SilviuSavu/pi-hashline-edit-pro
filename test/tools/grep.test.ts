@@ -73,8 +73,9 @@ describe("grep tool", () => {
 
       const store = await loadHashStore();
       const resolved = await resolveTarget(toCwd("sample.ts", cwd));
-      expect(getSnapshot(store, resolved, "alpha\nbeta\n")).toBeUndefined();
-      expect(getServed(store, resolved)?.size).toBeGreaterThan(0);
+      expect(await getSnapshot(store, resolved, "alpha\nbeta\n")).toBeUndefined();
+      const servedSet = await getServed(store, resolved);
+      expect(servedSet?.size).toBeGreaterThan(0);
     });
   });
 
