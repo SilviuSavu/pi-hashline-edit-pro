@@ -12,6 +12,8 @@ function canonLines(lines: string[]): string[] {
   return parseText(lines).map((line) => stripRowPrefix(line).text);
 }
 
+export const BOUNDARY_BYPASS_LIMIT = 256;
+
 const boundaryBypassTracker = new Map<string, string>();
 
 export function noopPayloadKey(
@@ -29,7 +31,17 @@ export function noopPayloadKey(
 }
 
 export function markBoundaryNoop(absolutePath: string, payload: string): void {
+  if (!boundaryBypassTracker.has(absolutePath)) {
+    if (boundaryBypassTracker.size >= BOUNDARY_BYPASS_LIMIT) {
+      const oldest = boundaryBypassTracker.keys().next().value;
+      if (oldest !== undefined) boundaryBypassTracker.delete(oldest);
+    }
+  }
   boundaryBypassTracker.set(absolutePath, payload);
+}
+
+export function boundaryBypassTrackerSize(): number {
+  return boundaryBypassTracker.size;
 }
 
 export function consumeBoundaryBypass(absolutePath: string, payload: string): boolean {
