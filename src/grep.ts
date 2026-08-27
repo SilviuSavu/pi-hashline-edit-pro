@@ -78,7 +78,6 @@ function globToRegex(glob: string): RegExp {
   return new RegExp(`^${source}$`);
 }
 
-// Classifies a load-time error so we can count each silent-skip category separately.
 function classifyLoadError(error: unknown): "tooLarge" | "permission" | "other" {
   if (error instanceof Error && error.message.startsWith("[E_FILE_TOO_LARGE]")) return "tooLarge";
   const code = errCode(error);
@@ -125,8 +124,6 @@ async function walkFiles(
     try {
       entries = await readdir(dir, { withFileTypes: true });
     } catch (error) {
-      // ENOENT races (a directory was removed mid-walk) are harmless; anything
-      // else means the agent lost visibility into this directory and should be told.
       if (errCode(error) !== "ENOENT") state.skipped.unreadableDir += 1;
       continue;
     }
