@@ -256,8 +256,6 @@ export function regGrep(pi: ExtensionAPI): void {
       const canonical = normReq(params);
       assertGrepReq(canonical);
       const req = canonical;
-      // Default is literal; opt into regex via regex: true. literal: true is kept
-      // for backward compatibility and is equivalent to leaving both unset.
       const useRegex = req.regex === true;
       const useLiteral = req.literal === true || !useRegex;
       const regex = buildRegex(req.pattern, useLiteral, req.ignoreCase === true);
@@ -322,8 +320,6 @@ export function regGrep(pi: ExtensionAPI): void {
       if (rowTruncated) notes.push(`[grep: output truncated at ${MAX_SHOWN_ROWS} rows; refine the pattern to see more.]`);
       if (limitTruncated) notes.push(`[grep: showing first ${limit} matches; increase limit to see more.]`);
       if (state.stopped) notes.push(`[grep: scan cap of ${MAX_SCAN_FILES} files reached; results may be incomplete.]`);
-      // If the pattern was passed with regex metacharacters but produced no
-      // matches, surface a hint that the caller probably meant a literal.
       if (useRegex && REGEX_METACHARS.test(req.pattern) && hits.length === 0) {
         notes.push(`[W_LITERAL_LIKELY] pattern contains regex metacharacters and returned 0 matches; try omitting "regex: true" (the default is literal).`);
       }

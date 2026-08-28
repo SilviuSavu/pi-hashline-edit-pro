@@ -342,7 +342,7 @@ describe("grep tool", () => {
 
   it("rejects an invalid pattern", async () => {
     await withTempFile("sample.ts", "alpha\n", async ({ cwd }) => {
-      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const { getTool } = setupIntegrationTest(cwd)
       const grepTool = getTool("grep");
       await expect(
         grepTool.execute(
