@@ -53,7 +53,8 @@ type NoopSpan = {
 	currentContent: string;
 };
 function assertNotEmpty(originalContent: string, result: string): void {
-	if (originalContent.length > 0 && result.length === 0) {
+	const hasRealContent = originalContent.trim().length > 0;
+	if (hasRealContent && result.length === 0) {
 		throw new Error(
 			"[E_WOULD_EMPTY] A replace cannot empty a non-empty file. Use `write` to clear the file."
 		);
