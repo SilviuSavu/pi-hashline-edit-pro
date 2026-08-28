@@ -52,8 +52,6 @@ export async function safeSnapId(
   try {
     return (await fileSnap(absolutePath)).snapshotId;
   } catch (error) {
-    // Include the path and error code in the message so downstream tools can
-    // see WHY the snapshot was dropped (EACCES? ELOOP? raced ENOENT?).
     console.error(
       `[safeSnapId] ${context}: failed to stat "${absolutePath}" (code=${(error as NodeJS.ErrnoException)?.code ?? "?"}):`,
       error,
