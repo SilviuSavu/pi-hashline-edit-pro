@@ -113,8 +113,6 @@ export function parseHashList(
   try {
     parsed = JSON.parse(raw);
   } catch (error) {
-    // Silent JSON corruption used to delete served records on every read.
-    // Log the parse error so the user can diagnose the corruption.
     console.error(
       `[parseHashList]${context ? ` ${context}:` : ""} failed to parse stored hashes JSON:`,
       error,
