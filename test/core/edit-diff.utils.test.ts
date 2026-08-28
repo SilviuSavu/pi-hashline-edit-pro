@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import * as Diff from "diff";
 import { detectEnding, toLF, restoreEndings, stripBOM, genDiff } from "../../src/replace-diff";
 import { _lineHashesPure, initHasher } from "../../src/hashline";
 
@@ -191,5 +192,22 @@ describe("genDiff", () => {
     const newContent = "a\nb\nNEW\nu1\nu2\n";
     const { diff } = genDiff(oldContent, newContent, 2);
     expect(diff.split("\n").filter((line) => line.trim() === "...")).toHaveLength(0);
+  });
+});
+
+describe("Diff.FILE_HEADERS_ONLY availability", () => {
+  it("is exported by the installed `diff` package", () => {
+    expect(Diff.FILE_HEADERS_ONLY).toBeDefined();
+    expect(Diff.FILE_HEADERS_ONLY).toMatchObject({
+      includeFileHeaders: true,
+    });
+  });
+
+  it("is what genPatch actually uses", async () => {
+    const { genPatch } = await import("../../src/replace-diff");
+    const diff = genPatch("a.txt", "a\nb\n", "a\nB\n");
+    expect(diff).toContain("--- a.txt");
+    expect(diff).toContain("+++ a.txt");
+    expect(diff).not.toContain("Index:");
   });
 });
