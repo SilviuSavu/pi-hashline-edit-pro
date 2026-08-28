@@ -97,24 +97,66 @@ describe("grep tool", () => {
     });
   });
 
-  it("matches regex patterns by default and literals with literal", async () => {
-    await withTempFile("sample.ts", "axb\n", async ({ cwd }) => {
+  it("matches literal text by default and regex only with regex: true", async () => {
+    await withTempFile("sample.ts", "axb\na.b\n", async ({ cwd }) => {
       const { ctx, getTool } = setupIntegrationTest(cwd);
       const grepTool = getTool("grep");
-
-      const regexResult = await grepTool.execute(
+      const literalResult = await grepTool.execute(
         "g1",
         { pattern: "a.b", path: "sample.ts" },
         undefined, undefined, ctx,
       );
-      expect(getText(regexResult)).toContain("│axb");
-
-      const literalResult = await grepTool.execute(
+      const literalText = getText(literalResult);
+      expect(literalText).toContain("│a.b");
+      expect(literalText).not.toContain("│axb");
+      const regexResult = await grepTool.execute(
         "g2",
-        { pattern: "a.b", path: "sample.ts", literal: true },
+        { pattern: "a.b", path: "sample.ts", regex: true },
         undefined, undefined, ctx,
       );
-      expect(getText(literalResult)).toBe("No matches found.");
+      const regexText = getText(regexResult);
+      expect(regexText).toContain("│axb");
+      expect(regexText).toContain("│a.b");
+    });
+  });
+  it("rejects regex: true combined with literal: true", async () => {
+    await withTempFile("sample.ts", "alpha\n", async ({ cwd }) => {
+      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const grepTool = getTool("grep");
+      await expect(
+        grepTool.execute(
+          "g1",
+          { pattern: "alpha", path: "sample.ts", regex: true, literal: true },
+          undefined, undefined, ctx,
+        ),
+      ).rejects.toThrow(/E_BAD_SHAPE/);
+    });
+  });
+  it("warns [W_LITERAL_LIKELY] when a regex-with-metachar pattern matches nothing", async () => {
+    await withTempFile("sample.ts", "alpha\n", async ({ cwd }) => {
+      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const grepTool = getTool("grep");
+      const result = await grepTool.execute(
+        "g1",
+        { pattern: "v1.0", path: "sample.ts", regex: true },
+        undefined, undefined, ctx,
+      );
+      const text = getText(result);
+      expect(text).toContain("No matches found.");
+      expect(text).toContain("[W_LITERAL_LIKELY]");
+      expect(text).toContain("regex metacharacters");
+    });
+  });
+  it("does not warn [W_LITERAL_LIKELY] when a regex pattern does match", async () => {
+    await withTempFile("sample.ts", "v1.0\n", async ({ cwd }) => {
+      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const grepTool = getTool("grep");
+      const result = await grepTool.execute(
+        "g1",
+        { pattern: "v1.0", path: "sample.ts", regex: true },
+        undefined, undefined, ctx,
+      );
+      expect(getText(result)).not.toContain("[W_LITERAL_LIKELY]");
     });
   });
 
@@ -179,7 +221,7 @@ describe("grep tool", () => {
 
       const result = await grepTool.execute(
         "g1",
-        { pattern: "^line", path: "sample.ts", limit: 5 },
+        { pattern: "^line", path: "sample.ts", limit: 5, regex: true },
         undefined, undefined, ctx,
       );
       const text = getText(result);
@@ -300,13 +342,12 @@ describe("grep tool", () => {
 
   it("rejects an invalid pattern", async () => {
     await withTempFile("sample.ts", "alpha\n", async ({ cwd }) => {
-      const { ctx, getTool } = setupIntegrationTest(cwd);
+      const { getTool } = setupIntegrationTest(cwd)
       const grepTool = getTool("grep");
       await expect(
         grepTool.execute(
           "g1",
-          { pattern: "(", path: "sample.ts" },
-          undefined, undefined, ctx,
+          { pattern: "(", path: "sample.ts", regex: true },
         ),
       ).rejects.toThrow(/E_BAD_SHAPE/);
     });
