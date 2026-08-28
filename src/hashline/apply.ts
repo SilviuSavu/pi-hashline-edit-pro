@@ -53,8 +53,6 @@ type NoopSpan = {
 	currentContent: string;
 };
 function assertNotEmpty(originalContent: string, result: string): void {
-	// A whitespace-only file is treated as effectively empty so it can be
-	// cleared with a regular replace.
 	const hasRealContent = originalContent.trim().length > 0;
 	if (hasRealContent && result.length === 0) {
 		throw new Error(
