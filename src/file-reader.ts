@@ -52,7 +52,10 @@ export async function safeSnapId(
   try {
     return (await fileSnap(absolutePath)).snapshotId;
   } catch (error) {
-    console.error(`Failed to compute snapshot (${context}):`, error);
+    console.error(
+      `[safeSnapId] ${context}: failed to stat "${absolutePath}" (code=${(error as NodeJS.ErrnoException)?.code ?? "?"}):`,
+      error,
+    );
     return undefined;
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm, writeFile, symlink } from "fs/promises";
 import { join } from "path";
 import { fileSnap, safeSnapId } from "../../src/file-reader";
@@ -125,5 +125,23 @@ describe("safeSnapId", () => {
       const missingPath = join(dir, "missing.ts");
       expect(await safeSnapId(missingPath, "test")).toBeUndefined();
     });
+  });
+
+  it("logs the path and error code when safeSnapId fails", async () => {
+    const consoleErr = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await withTempDir(async (dir) => {
+        const missingPath = join(dir, "missing.ts");
+        expect(await safeSnapId(missingPath, "post-edit")).toBeUndefined();
+        expect(consoleErr).toHaveBeenCalled();
+        const msg = String(consoleErr.mock.calls[0]?.[0] ?? "");
+        expect(msg).toContain("[safeSnapId]");
+        expect(msg).toContain("post-edit");
+        expect(msg).toContain(missingPath);
+        expect(msg).toContain("ENOENT");
+      });
+    } finally {
+      consoleErr.mockRestore();
+    }
   });
 });
