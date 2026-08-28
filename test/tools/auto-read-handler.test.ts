@@ -420,6 +420,7 @@ describe("replace diff in model-visible text", () => {
     expect(text).toContain("post-edit");
     expect(text).toContain("diff is empty");
   });
+
   it("shows the post-edit diff for undo_last_change results too", async () => {
     await withTempDir("auto-read-diff-undo-", async (dir) => {
       await writeFile(join(dir, "undo.txt"), "aaa\nbbb\nccc\n", "utf-8");

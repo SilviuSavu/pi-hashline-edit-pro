@@ -125,9 +125,6 @@ export default function (pi: ExtensionAPI): void {
     if (metrics?.classification === "noop") return;
 
     const diff = (event.details as { diff?: string } | undefined)?.diff;
-    // A whitespace-only change produces an empty diff but the tool still
-    // succeeded. Show a hint instead of returning silently so the agent
-    // knows the post-edit hook ran and the change was real (just not text).
     const hasDiff = typeof diff === "string" && diff.length > 0;
     const rendered = (event.content ?? [])
       .filter(
