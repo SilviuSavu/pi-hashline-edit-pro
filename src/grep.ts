@@ -357,11 +357,11 @@ export function regGrep(pi: ExtensionAPI): void {
         .join("\n");
       const notes: string[] = [];
       if (rowTruncated) notes.push(`[grep: output truncated at ${MAX_SHOWN_ROWS} rows; refine the pattern to see more.]`);
-      if (limitTruncated) notes.push(`[grep: showing first ${limit} matches; increase limit to see more.]`);
       if (state.stopped) notes.push(`[grep: scan cap of ${MAX_SCAN_FILES} files reached; results may be incomplete.]`);
       if (state.skipped.tooLarge > 0) notes.push(`[grep: ${state.skipped.tooLarge} file(s) skipped (over the ${MAX_HASH_LINES}-line limit); refine path or raise limits.]`);
       if (state.skipped.permission > 0) notes.push(`[grep: ${state.skipped.permission} file(s) skipped (EACCES/EPERM); check permissions.]`);
       if (state.skipped.unreadableDir > 0) notes.push(`[grep: ${state.skipped.unreadableDir} directory(ies) unreadable.]`);
+      if (limitTruncated) notes.push(`[grep: hit the ${limit}-match limit; rerun with limit=${limit * 5} to see the rest.]`);
       const truncated = limitTruncated || rowTruncated;
       const text = blocks.length > 0 ? `${blocks}${notes.length > 0 ? `\n${notes.join("\n")}` : ""}` : "No matches found.";
       return {
@@ -372,6 +372,8 @@ export function regGrep(pi: ExtensionAPI): void {
             files: hits.length,
             truncated: truncated || state.stopped,
             skipped: { ...state.skipped },
+            limit: { requested: limit, returned: matches, hit: limitTruncated },
+            rows: { cap: MAX_SHOWN_ROWS, returned: rowCount, hit: rowTruncated },
           },
         },
       };
