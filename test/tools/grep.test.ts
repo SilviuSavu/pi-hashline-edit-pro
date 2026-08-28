@@ -153,6 +153,41 @@ describe("grep tool", () => {
     });
   });
 
+  it("honors skip: [...] to override the default skip list", async () => {
+    await withTempDir("grep-skip-list-", async (dir) => {
+      await mkdir(join(dir, "dist"), { recursive: true });
+      await mkdir(join(dir, "node_modules", "pkg"), { recursive: true });
+      await writeFile(join(dir, "dist", "a.ts"), "needle in dist\n", "utf-8");
+      await writeFile(join(dir, "node_modules", "pkg", "b.ts"), "needle in nm\n", "utf-8");
+
+      const { ctx, getTool } = setupIntegrationTest(dir);
+      const grepTool = getTool("grep");
+      const result = await grepTool.execute(
+        "g1",
+        { pattern: "needle", skip: ["node_modules"] },
+        undefined, undefined, ctx,
+      );
+      const text = getText(result);
+      expect(text).toContain("=== dist/a.ts ===");
+      expect(text).not.toContain("node_modules");
+    });
+  });
+
+  it("honors no_skip: true to scan into node_modules", async () => {
+    await withTempDir("grep-no-skip-", async (dir) => {
+      await mkdir(join(dir, "node_modules", "pkg"), { recursive: true });
+      await writeFile(join(dir, "node_modules", "pkg", "a.ts"), "needle deep\n", "utf-8");
+
+      const { ctx, getTool } = setupIntegrationTest(dir);
+      const grepTool = getTool("grep");
+      const result = await grepTool.execute(
+        "g1",
+        { pattern: "needle", no_skip: true },
+        undefined, undefined, ctx,
+      );
+      expect(getText(result)).toContain("=== node_modules/pkg/a.ts ===");
+    });
+  });
   it("skips binary files silently", async () => {
     await withTempDir("grep-bin-", async (dir) => {
       await writeFile(join(dir, "a.txt"), "needle here\n", "utf-8");
