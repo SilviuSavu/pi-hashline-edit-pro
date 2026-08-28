@@ -111,9 +111,6 @@ describe("replace - missing path resolution", () => {
     try {
       await withTempFile("sample.ts", "aaa\nbbb\n", async ({ cwd }) => {
         const { ctx, editTool } = setupIntegrationTest(cwd);
-        // Malformed hash refs: the path resolver should log the parse error
-        // instead of silently returning undefined and surfacing a confusing
-        // generic "requires non-empty path" later.
         const promise = editTool.execute(
           "e1",
           { remove_from: "not-a-hash", remove_to: "also-bad", replacement_lines: ["X"] },

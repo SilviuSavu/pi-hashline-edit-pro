@@ -139,9 +139,6 @@ async function resolveMissingPath(
     try {
       hashes.push(parseHashRef(ref).hash);
     } catch (error) {
-      // Surface anchor-parse failures instead of silently returning undefined;
-      // otherwise the user only sees a generic "requires non-empty path" later
-      // and has no idea which anchor was malformed.
       console.error(
         `[resolveMissingPath] failed to parse hash ref "${ref}":`,
         error,
