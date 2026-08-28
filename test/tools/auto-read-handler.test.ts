@@ -399,7 +399,7 @@ describe("replace diff in model-visible text", () => {
     });
   });
 
-  it("leaves the summary untouched when the result carries no diff", async () => {
+  it("returns the empty-diff hint when the result carries no diff", async () => {
     const { pi, handlers } = makeFakePi();
     register(pi);
     const handler = handlers.get("tool_result");
@@ -415,7 +415,10 @@ describe("replace diff in model-visible text", () => {
       { cwd: "/tmp" },
     );
 
-    expect(result).toBeUndefined();
+    expect(result).toBeDefined();
+    const text = (result as { content: Array<{ text: string }> }).content[0]!.text;
+    expect(text).toContain("post-edit");
+    expect(text).toContain("diff is empty");
   });
 
   it("shows the post-edit diff for undo_last_change results too", async () => {
@@ -449,7 +452,7 @@ describe("replace diff in model-visible text", () => {
     });
   });
 
-  it("leaves the undo summary untouched when the result carries no diff", async () => {
+  it("returns the empty-diff hint for undo_last_change too", async () => {
     const { pi, handlers } = makeFakePi();
     register(pi);
     const handler = handlers.get("tool_result");
@@ -465,7 +468,10 @@ describe("replace diff in model-visible text", () => {
       { cwd: "/tmp" },
     );
 
-    expect(result).toBeUndefined();
+    expect(result).toBeDefined();
+    const text = (result as { content: Array<{ text: string }> }).content[0]!.text;
+    expect(text).toContain("post-edit");
+    expect(text).toContain("diff is empty");
   });
 
   it("leaves the summary untouched for replace when auto-read is disabled", async () => {
@@ -489,6 +495,28 @@ describe("replace diff in model-visible text", () => {
         { cwd: dir },
       );
       expect(result).toBeUndefined();
+    });
+  });
+
+  it("shows a hint when the post-edit diff is empty", async () => {
+    await withTempDir("auto-read-empty-diff-", async (dir) => {
+      const { pi, handlers } = makeFakePi();
+      register(pi);
+      const handler = handlers.get("tool_result");
+      const result = await handler!(
+        {
+          toolName: "replace",
+          isError: false,
+          input: { path: "empty.txt" },
+          details: { diff: "", metrics: { classification: "applied" } },
+          content: [{ type: "text", text: "Successfully replaced in empty.txt." }],
+        },
+        { cwd: dir },
+      );
+      expect(result).toBeDefined();
+      const text = (result as { content: Array<{ text: string }> }).content[0]!.text;
+      expect(text).toContain("post-edit");
+      expect(text).toContain("diff is empty");
     });
   });
 });
