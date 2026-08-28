@@ -774,3 +774,36 @@ describe("hash-store - snapshot cache", () => {
     });
   });
 });
+
+describe("parseHashList logging", () => {
+  it("logs JSON parse errors instead of silently dropping the row", async () => {
+    const { parseHashList } = await import("../../src/hash-store");
+    const consoleErr = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      let onInvalidCalls = 0;
+      const result = parseHashList("not valid json", () => onInvalidCalls += 1, "test-context");
+      expect(result).toBeUndefined();
+      expect(onInvalidCalls).toBe(1);
+      expect(consoleErr).toHaveBeenCalled();
+      const msg = String(consoleErr.mock.calls[0]?.[0] ?? "");
+      expect(msg).toContain("[parseHashList]");
+      expect(msg).toContain("test-context");
+    } finally {
+      consoleErr.mockRestore();
+    }
+  });
+
+  it("logs when JSON parses but the array fails validation", async () => {
+    const { parseHashList } = await import("../../src/hash-store");
+    const consoleErr = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      let onInvalidCalls = 0;
+      const result = parseHashList(JSON.stringify(["bad-hash"]), () => onInvalidCalls += 1);
+      expect(result).toBeUndefined();
+      expect(onInvalidCalls).toBe(1);
+      expect(consoleErr).toHaveBeenCalled();
+    } finally {
+      consoleErr.mockRestore();
+    }
+  });
+});
