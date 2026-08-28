@@ -197,12 +197,6 @@ describe("genDiff", () => {
 
 describe("Diff.FILE_HEADERS_ONLY availability", () => {
   it("is exported by the installed `diff` package", () => {
-    // src/replace-diff.ts relies on Diff.FILE_HEADERS_ONLY for its
-    // createTwoFilesPatch call.
-    // If a future major release removes this
-    // export, genPatch will start producing "Index: ..." headers in
-    // every diff.
-    // This test fails fast so we can pin the dependency.
     expect(Diff.FILE_HEADERS_ONLY).toBeDefined();
     expect(Diff.FILE_HEADERS_ONLY).toMatchObject({
       includeFileHeaders: true,
@@ -210,11 +204,7 @@ describe("Diff.FILE_HEADERS_ONLY availability", () => {
   });
 
   it("is what genPatch actually uses", async () => {
-    // genDiff calls genPatch internally; smoke-test that the import
-    // resolves and produces a non-empty diff using the configured options.
     const { genPatch } = await import("../../src/replace-diff");
-    // genPatch uses Diff.createTwoFilesPatch with Diff.FILE_HEADERS_ONLY,
-    // which produces a two-line header (--- / +++) and no Index: line.
     const diff = genPatch("a.txt", "a\nb\n", "a\nB\n");
     expect(diff).toContain("--- a.txt");
     expect(diff).toContain("+++ a.txt");
