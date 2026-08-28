@@ -247,6 +247,25 @@ describe("grep tool", () => {
     });
   });
 
+
+  it("matches absolute-style globs (with a leading slash) against cwd-relative paths", async () => {
+    await withTempDir("grep-glob-abs-", async (dir) => {
+      await mkdir(join(dir, "src"), { recursive: true });
+      await writeFile(join(dir, "src", "a.ts"), "needle\n", "utf-8");
+      await writeFile(join(dir, "src", "b.txt"), "needle\n", "utf-8");
+
+      const { ctx, getTool } = setupIntegrationTest(dir);
+      const grepTool = getTool("grep");
+      const result = await grepTool.execute(
+        "g1",
+        { pattern: "needle", path: "src", glob: "/src/*.ts" },
+        undefined, undefined, ctx,
+      );
+      const text = getText(result);
+      expect(text).toContain("=== src/a.ts ===");
+      expect(text).not.toContain("b.txt");
+    });
+  });
   it("skips a line-oversized file in a directory scan", async () => {
     await withTempDir("grep-big-", async (dir) => {
       await writeFile(join(dir, "small.ts"), "needle\n", "utf-8");
