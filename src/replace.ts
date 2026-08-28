@@ -138,7 +138,11 @@ async function resolveMissingPath(
   for (const ref of [from, to]) {
     try {
       hashes.push(parseHashRef(ref).hash);
-    } catch {
+    } catch (error) {
+      console.error(
+        `[resolveMissingPath] failed to parse hash ref "${ref}":`,
+        error,
+      );
       return undefined;
     }
   }
